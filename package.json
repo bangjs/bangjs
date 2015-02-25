@@ -1,0 +1,33 @@
+{
+  "name": "bangjs",
+  "version": "0.1.0",
+  "description": "Pinch of Bacon.js, drop of AngularJS; BANGjs!",
+  "main": "./src/core.js",
+  "scripts": {
+    "test": "./node_modules/karma/bin/karma start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nouncy/bangjs"
+  },
+  "keywords": [
+    "bacon",
+    "Bacon.js",
+    "angular",
+    "AngularJS",
+    "frp",
+    "reactive"
+  ],
+  "author": "Tim Molendijk <tim@nouncy.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nouncy/bangjs/issues"
+  },
+  "homepage": "https://github.com/nouncy/bangjs",
+  "devDependencies": {
+    "karma": "^0.12.31",
+    "karma-mocha": "^0.1.10",
+    "karma-sinon-chai": "^0.3.0",
+    "mocha": "^2.1.0"
+  }
+}

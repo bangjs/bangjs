@@ -1,0 +1,1 @@
+Very early-stage version of AngularJS module for writing Bacon.js-powered apps.

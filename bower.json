@@ -1,0 +1,33 @@
+{
+  "name": "BANGjs",
+  "version": "0.1.0",
+  "authors": [
+    "Tim Molendijk <tim@timmolendijk.nl>"
+  ],
+  "description": "Pinch of Bacon.js, drop of AngularJS; BANGjs!",
+  "main": "./src/core.js",
+  "keywords": [
+    "bacon",
+    "Bacon.js",
+    "angular",
+    "AngularJS",
+    "frp",
+    "reactive"
+  ],
+  "license": "ISC",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "bacon": "~0.7.50"
+  },
+  "devDependencies": {
+    "angular": "~1.2.26",
+    "angular-mocks": "~1.2.26",
+    "lodash": "~3.3.1"
+  }
+}
