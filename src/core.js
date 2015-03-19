@@ -26,6 +26,11 @@ function flatten(obj,prefix){
 
 function atc (moduleName, ctrlName, elements, initElement) {
 
+	var json = {
+		nodes: [],
+		links: []
+	};
+
 	var buildContext;
 	angular.module(moduleName).run(['$parse', function ($parse) {
 
@@ -88,6 +93,15 @@ function atc (moduleName, ctrlName, elements, initElement) {
 
 			var svcName = [ctrlName, elementName].join('.');
 
+			json.nodes.push({
+				name: elementName,
+				group: ctrlName,
+				// TODO: Naming
+				// setup: svcSetup && svcSetup.toString(),
+				// behavior: svcBehavior && svcBehavior.toString(),
+				deps: element.slice(0, element.indexOf(svcSetup))
+			});
+
 			ctrlDeps.push(svcName);
 
 			var svc = function () {
@@ -126,12 +140,62 @@ function atc (moduleName, ctrlName, elements, initElement) {
 
 			angular.extend(this, context);
 
+			this.serialize = json.graphviz;
+
 		};
 		ctrl.$inject = ['$scope'].concat(ctrlDeps);
 
 		$controllerProvider.register(ctrlName, ctrl);
 
 	}]);
+
+	json.addLinks = function () {
+		var extIncluded = [];
+
+		json.nodes.forEach(function (node, targetIndex) {
+			node.deps.forEach(function (dep) {
+				if (dep.charAt(0) !== '.') {
+					return;	// remove to include external deps
+					if (extIncluded.indexOf(dep) === -1) {
+						extIncluded.push(dep);
+						json.nodes.push({
+							name: dep,
+							group: '[external]'
+						});
+					}
+				}
+
+				var link = {};
+				json.nodes.some(function (node, sourceIndex) {
+					if (node.name !== (dep.charAt(0) === '.' ? dep.substr(1) : dep)) return false;
+					link.source = sourceIndex;
+					return true;
+				});
+				link.target = targetIndex;
+				link.value = 1;
+				json.links.push(link);
+			});
+		});
+
+		json.addLinks = function () {};
+	};
+
+	json.graphviz = function () {
+		json.addLinks();
+
+		var gv = "digraph {";
+		json.nodes.forEach(function (node) {
+			gv += '"' + node.name + '";';
+		});
+		json.links.forEach(function (link) {
+			gv += '"' + json.nodes[link.source].name + '" -> "' + json.nodes[link.target].name + '";';
+		});
+		gv += "}";
+
+		return gv;
+	};
+
+	return json;
 
 };
 

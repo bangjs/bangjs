@@ -25,6 +25,7 @@
   },
   "homepage": "https://github.com/nouncy/bangjs",
   "devDependencies": {
+    "docdown": "^0.1.0",
     "karma": "^0.12.31",
     "karma-mocha": "^0.1.10",
     "karma-sinon-chai": "^0.3.0",
