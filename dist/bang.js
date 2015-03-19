@@ -22,6 +22,7 @@ function flatten(obj,prefix){
 
 
 function atc (moduleName, ctrlName, elements, initElement) {
+	// TODO: Deal with `moduleName` being the actual module already.
 
 	var json = {
 		nodes: [],
@@ -79,14 +80,22 @@ function atc (moduleName, ctrlName, elements, initElement) {
 
 			var svcSetup = invokable[0],
 				svcBehavior = invokable[1],
-				svcDeps = element.slice(0, element.indexOf(svcSetup)).map(function (dep) {
-					if (dep.charAt(0) === '.')
-						dep = ctrlName + dep;
-					// TODO: Would be nice if we could also resolve stuff like
-					// `.edit` into `controller.edit.x`, `controller.edit.y`
-					// etcetera.
-					return dep;
-				});
+				svcDeps = element.slice(0, element.indexOf(svcSetup)).
+					// Normalize names
+					map(function (dep) {
+						if (dep.charAt(0) === '.')
+							dep = ctrlName + dep;
+						// TODO: Would be nice if we could also resolve stuff like
+						// `.edit` into `controller.edit.x`, `controller.edit.y`
+						// etcetera.
+						return dep;
+					}).
+					// Take out duplicates
+					reduce(function (distincts, dep) {
+						if (distincts.indexOf(dep) === -1)
+							distincts.push(dep);
+						return distincts;
+					}, []);
 
 			var svcName = [ctrlName, elementName].join('.');
 
@@ -569,8 +578,8 @@ bang.property.conditional = function (source, condition) {
  * @static
  * @memberOf bang.property
  * @param {...string} [dependencies] Dependencies to be injected into
- *  context of `initial`.
- * @param {Function} initial Observable that initializes scope value.
+ *  context of `merge`.
+ * @param {Function} merge Observable whose values should be merged into watched scope values.
  * @returns {Function} Returns `atc`ifiable element factory method.
  */
 bang.property.watch = function () {
@@ -579,19 +588,22 @@ bang.property.watch = function () {
 	// Safari](https://twitter.com/timmolendijk/status/578246289554554881).
 	// [Very inconsistently](https://twitter.com/timmolendijk/status/57824705145
 	// 8273280).
-	var initial = arguments.length > 0 ? arguments[arguments.length - 1] : undefined,
-		deps = ['Bacon'].concat([].slice.call(arguments, 0, arguments.length - 1));
+	var merge = arguments.length > 0 ? arguments[arguments.length - 1] : undefined,
+		deps = [].slice.call(arguments, 0, arguments.length - 1);
 
 	var fn = function (elementName) {
-		return deps.concat([function () {
+		// TODO: Make sure that `atc` does not choke on duplicate dependencies.
+		return ['Bacon'].concat(deps).concat([function () {
 			var setupContext = angular.extend({}, this);
-			delete setupContext.$scope;
-			// TODO: Pretty sure that this is not a bullet-proof means of
-			// assigning an initial value to scope variable.
+			if (deps.indexOf('$scope') === -1)
+				delete setupContext.$scope;
+			if (deps.indexOf('Bacon') === -1)
+				delete setupContext.Bacon;
 			return this.Bacon.mergeAll(
-				angular.isFunction(initial) ?
-					initial.call(setupContext) : this.Bacon.never(),
-				this.$scope.watchAsProperty(elementName)
+				angular.isFunction(merge) ?
+					// TODO: Pass `me` to `merge` just like in other helpers?
+					merge.call(setupContext) : this.Bacon.never(),
+				this.$scope.watchAsProperty(elementName).skip(1)
 			).toProperty();
 		}, function (me) {
 			this.$scope.digest(elementName, me);

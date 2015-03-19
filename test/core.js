@@ -1,37 +1,3 @@
-describe("bang", function () {
-
-	describe("property.watch", function () {
-
-		it("returns a factory method", function () {
-			expect(bang.property.watch()).to.be.a.function;
-		});
-
-		// Check that it will not end up referencing `arguments[-1]`, as Safari
-		// does not [like
-		// that](https://twitter.com/timmolendijk/status/578246289554554881) [at
-		// all](https://twitter.com/timmolendijk/status/578247051458273280).
-		it("does not choke on function as context", function () {
-			var spy = sinon.spy();
-
-			var atcDef = bang.property.watch
-				.call(spy)
-				('elementName');
-
-			atcDef[atcDef.length - 2].call({
-				Bacon: Bacon,
-				$scope: {
-					watchAsProperty: sinon.stub().returns(Bacon.never())
-				}
-			});
-			
-			expect(spy).to.not.have.been.called;
-		});
-
-	});
-
-});
-
-
 /*
 beforeEach(module('bang'));
 

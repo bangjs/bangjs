@@ -27,7 +27,8 @@ module.exports = function(config) {
 			'src/module.js',
 			'src/controller.js',
 
-			'test/core.js'
+			'test/core.js',
+			'test/controller.js'
 		],
 
 
