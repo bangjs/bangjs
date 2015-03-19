@@ -126,7 +126,7 @@ global.bang.property.conditional = function (source, condition) {
  * @returns {Function} Returns `atc`ifiable element factory method.
  */
 global.bang.property.watch = function () {
-	// TODO: Ending up at `arguments[-1]` should be avoided as [it behaves
+	// Ending up at `arguments[-1]` should be avoided as [it behaves
 	// inconsistently in
 	// Safari](https://twitter.com/timmolendijk/status/578246289554554881).
 	// [Very inconsistently](https://twitter.com/timmolendijk/status/57824705145

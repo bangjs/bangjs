@@ -6,11 +6,25 @@ describe("bang", function () {
 			expect(bang.property.watch()).to.be.a.function;
 		});
 
-		it("returns a factory method that creates an `atc` element definition", function () {
-			var element = bang.property.watch()('nested.element');
-			expect(element).to.be.an.array;
-			expect(element.length).to.equal(3);
-			expect(element[0]).to.equal('Bacon');
+		// Check that it will not end up referencing `arguments[-1]`, as Safari
+		// does not [like
+		// that](https://twitter.com/timmolendijk/status/578246289554554881) [at
+		// all](https://twitter.com/timmolendijk/status/57824705145 8273280).
+		it("does not choke on function as context", function () {
+			var spy = sinon.spy();
+
+			var atcDef = bang.property.watch
+				.call(spy)
+				('elementName');
+
+			atcDef[atcDef.length - 2].call({
+				Bacon: Bacon,
+				$scope: {
+					watchAsProperty: sinon.stub().returns(Bacon.never())
+				}
+			});
+			
+			expect(spy).to.not.have.been.called;
 		});
 
 	});
