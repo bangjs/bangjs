@@ -9,7 +9,7 @@ describe("bang", function () {
 		// Check that it will not end up referencing `arguments[-1]`, as Safari
 		// does not [like
 		// that](https://twitter.com/timmolendijk/status/578246289554554881) [at
-		// all](https://twitter.com/timmolendijk/status/57824705145 8273280).
+		// all](https://twitter.com/timmolendijk/status/578247051458273280).
 		it("does not choke on function as context", function () {
 			var spy = sinon.spy();
 

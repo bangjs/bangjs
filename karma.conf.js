@@ -21,7 +21,11 @@ module.exports = function(config) {
 			'bower_components/angular-mocks/angular-mocks.js',
 			'bower_components/lodash/lodash.js',
 
+			'bower_components/angular-testable-controller/dist/atc.js',
 			'src/core.js',
+			'src/util.js',
+			'src/module.js',
+			'src/controller.js',
 
 			'test/core.js'
 		],
