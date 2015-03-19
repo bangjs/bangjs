@@ -1,1 +1,0 @@
-Very early-stage version of extremely testable dependency injected AngularJS controller syntax.

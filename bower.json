@@ -2,10 +2,10 @@
   "name": "BANGjs",
   "version": "0.1.0",
   "authors": [
-    "Tim Molendijk <tim@timmolendijk.nl>"
+    "Tim Molendijk <tim@nouncy.com>"
   ],
-  "description": "Pinch of Bacon.js, drop of AngularJS; BANGjs!",
-  "main": "./src/core.js",
+  "description": "Bacon-flavored Angular",
+  "main": "./dist/bang.js",
   "keywords": [
     "bacon",
     "Bacon.js",
