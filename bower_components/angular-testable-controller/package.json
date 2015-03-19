@@ -1,0 +1,31 @@
+{
+  "name": "angular-testable-controller",
+  "version": "0.1.0",
+  "description": "Super-testable AngularJS controller by supercharging AngularJS dependency injection",
+  "main": "src/core.js",
+  "scripts": {
+    "test": "./node_modules/karma/bin/karma start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nouncy/angular-testable-controller"
+  },
+  "keywords": [
+    "angular",
+    "AngularJS",
+    "testability",
+    "TDD",
+    "DI",
+    "controller"
+  ],
+  "author": "Tim Molendijk <tim@nouncy.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/nouncy/angular-testable-controller/issues"
+  },
+  "homepage": "https://github.com/nouncy/angular-testable-controller",
+  "dependencies": {
+    "gulp": "^3.8.11",
+    "gulp-concat": "^2.5.2"
+  }
+}
