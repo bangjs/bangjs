@@ -1,3 +1,6 @@
+// TODO: THe angular dependency here is not a true dependency (only used for its
+// utiilties), so that would indicate that we can make this thing a stand-alone
+// library.
 ;!function (bang, angular, Bacon) {
 
 var _bang = {};
@@ -5,6 +8,10 @@ var _bang = {};
 // TODO: Where do we want to expose these globally?
 bang.util = _bang;
 
+// TODO: For properly dealing with the lazyiness issue as reported in my big-ass
+// laziness property issue on the bacon github, consider whether there may be
+// more concise approaches, such as what the one contributor in that issue
+// thread mentioned, sth like: `$(...).asEventStream('x').toProperty(MyNullType).map(...)`
 _bang.createProperty = function (value, invalidate, end) {
 	var args = [].slice.call(arguments);
 
@@ -88,7 +95,7 @@ _bang.defineProperty = _bang.createPropertyFromObjectProperty;
 _bang.createConditionalProperty = function (observable, condition) {
 	return Bacon.combineWith(
 		function (value, pass) {
-			if (pass) return value;
+			if (pass !== false) return value;
 		}, observable, condition
 	).filter(function (value) {
 		return value !== undefined;

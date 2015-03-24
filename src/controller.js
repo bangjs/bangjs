@@ -1,7 +1,15 @@
+// TODO: Rename this file to `components.js` or sth like that
+
 ;!function (bang, angular, Bacon) {
 
 bang.controller = function (moduleName, ctrlName) {
 	var elements = angular.extend.apply(angular, [].slice.call(arguments, 2));
+
+	// TODO: Auto-add subscribe side effect to each element? As soon as we have
+	// that adding or omitting side effects will never have an impact on
+	// behavior.
+	// ==> Then, we could unsubscribe them all when we receive a $destroy for
+	// the scope of this controller.
 
 	atc(moduleName, ctrlName, elements, function (elementName, element) {
 		if (angular.isFunction(element) && element.atcify === true)
@@ -9,6 +17,16 @@ bang.controller = function (moduleName, ctrlName) {
 		return element;
 	});
 };
+
+// TODO: can't we also offer the other provider types?
+// bang.factory('myStandAloneSvc', bang.property('dep', setup () {}).
+// 	merge(...).
+// 	promise(...)
+// 	onValue(, fn () {
+// 		...
+// 	}).
+// 	storage()
+// );
 
 bang.stream = function () {
 	var args = [].slice.call(arguments);
@@ -60,6 +78,7 @@ bang.stream.invocations = function () {
 				return args[0];
 			});
 		};
+		// TODO: No problems caused by the fact that this stream remains lazy?
 	};
 	fn.atcify = true;
 	return fn;
@@ -80,6 +99,14 @@ bang.property = function () {
 			args[args.length - 1] : elementName.charAt(0) !== '_';
 
 		var setup = function () {
+			// TODO: The idea behind offering this Bus is that inside `setup`
+			// one can choose to work more conventional, as follows:
+			//	function (me) { this.x.onValue(function (v) { me.push(v); })}
+			// This looks nice, but wouldn't it reintroduce the lazy evaluation/
+			// subscribe ordering issue that this controller was supposed to
+			// resolve??
+			// ==> Isn't the answer that you should use `doAction` instead of
+			// `onValue`/`subscribe`??
 			var me = new Bacon.Bus();
 			var setupContext = angular.extend({}, this);
 			delete setupContext.$scope;
@@ -132,6 +159,7 @@ bang.property.watch = function () {
 	var fn = function (elementName) {
 		// TODO: Make sure that `atc` does not choke on duplicate dependencies.
 		return ['Bacon'].concat(deps).concat([function () {
+			// TODO: Use `_.omit()`.
 			var setupContext = angular.extend({}, this);
 			if (deps.indexOf('$scope') === -1)
 				delete setupContext.$scope;
@@ -141,6 +169,11 @@ bang.property.watch = function () {
 				angular.isFunction(merge) ?
 					// TODO: Pass `me` to `merge` just like in other helpers?
 					merge.call(setupContext) : this.Bacon.never(),
+				// TODO: Skipping the initial scope value is gonna be fine
+				// *until* somebody writes to $scope during setup. Which is
+				// most probably gonna happen.
+				// ==> Well no, it's not gonna happen because setup functions
+				// do not get a $scope in bang.controller.
 				this.$scope.watchAsProperty(elementName).skip(1)
 			).toProperty();
 		}, function (me) {

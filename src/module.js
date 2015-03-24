@@ -86,6 +86,7 @@ run(['$rootScope', '$parse', function ($rootScope, $parse) {
 		});
 	};
 
+	// TODO: Add variant that uses `doAction` instead of `onValue`
 	_angularBang.digest = function (scope, expressions) {
 		if (typeof expressions === 'string' && arguments.length > 2) {
 			var expression = expressions;
