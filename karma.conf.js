@@ -23,12 +23,15 @@ module.exports = function(config) {
 
 			'bower_components/angular-testable-controller/dist/atc.js',
 			'src/core.js',
-			'src/util.js',
+			'bower_components/bacon-extras/dist/bacon-extras.js',
 			'src/module.js',
 			'src/controller.js',
+			'src/service.js',
+			'src/property.js',
 
-			'test/core.js',
-			'test/controller.js'
+			'test/controller.js',
+			'test/service.js',
+			'test/property.js'
 		],
 
 

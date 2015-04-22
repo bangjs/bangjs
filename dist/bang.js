@@ -1,214 +1,180 @@
 ;!function (global, angular) {
 
-// https://gist.github.com/bittersweetryan/2787854
-function flatten(obj,prefix){
- 
-	var propName = (prefix) ? prefix + '.' :  '',
-	    ret = {};
+global.ani = function (name, definition) {
+	var obj = {};
+	obj[name] = function (nsInjector) {
+		// This is not a watertight condition, because when using
+		// `$injector.invoke` directly one could pass in an empty object as its
+		// `self` argument and we would be drawing incorrect conclusions. But we
+		// consider that an edge case because there is no obvious motive to do
+		// so and usually `$injector` will not be used directly but rather
+		// indirectly through `$provide` or similar, and those will never pass
+		// an empty object as `self`.
+		if (this && typeof this === 'object' && Object.keys(this).length === 0)
+			return nsInjector.instantiate(name, definition);
 
-	for(var attr in obj){
-	    
-	    // TODO: No dependency on lodash please
-	    if(_.isPlainObject(obj[attr])){
-	        _.extend(ret,flatten(obj[attr], propName + attr));
-	    }
-	    else{
-	        ret[propName + attr] = obj[attr];
-	    }
+		return nsInjector.invoke(name, definition, this);
+	};
+	obj[name].$inject = ['nsInjector'];
+	return obj;
+};
+
+angular.module('ani', []).factory('nsInjector', ['$injector', '$parse', function ($injector, $parse) {
+
+	function wrapNamespaced (path, namespaced) {
+		var base = path.split('.').slice(0, -1);
+
+		// Normalize annotation style.
+		if (!angular.isFunction(namespaced)) {
+			var inject = namespaced.slice(0, -1);
+			namespaced = namespaced[namespaced.length - 1];
+			namespaced.$inject = inject;
+		}
+		// TODO: Support implicit annotations?
+		namespaced.$inject = namespaced.$inject || [];
+
+		// Wrap namespaced definition to adapt it to `$injector`.
+		function regular () {
+			var injectables = [].slice.call(arguments);
+
+			// Invoke namespaced definition with bundled injectables.
+			return namespaced.call(this, regular.$inject.reduce(function (bundle, dep, i) {
+				var injectable = injectables[i];
+
+				bundle[dep] = injectable;
+
+				dep = dep.split('.');
+				if (base.length > 0 && angular.equals(dep.slice(0, base.length), base)) {
+					var relativePath = dep.slice(base.length).join('.');
+					// Enable `bundle['.nested.service']`
+					bundle['.' + relativePath] = injectable;
+					// Enable `bundle.nested.service`
+					$parse(relativePath).assign(bundle, injectable);
+				}
+
+				return bundle;
+			}, {}));
+		}
+
+		// Normalize dependencies.
+		regular.$inject = namespaced.$inject.reduce(function (normalized, dep) {
+			if (dep.charAt(0) === '.')
+				dep = base.join('.') + dep;
+			normalized.push(dep);
+			return normalized;
+		}, []);
+
+		return regular;
 	}
-	return ret;
- 
+
+	return {
+		invoke: function (path, namespacedFn, self, locals) {
+			return $injector.invoke(
+				wrapNamespaced(path, namespacedFn),
+				self, locals
+			);
+		},
+		instantiate: function (path, namespacedType, locals) {
+			return $injector.instantiate(
+				wrapNamespaced(path, namespacedType),
+				self, locals
+			);
+		}
+	};
+
+}]);
+
+}(window, window.angular);
+;!function (global, angular, ani) {
+
+angular.module('atc', ['ani']);
+
+function makeName (ctrlName, fieldName) {
+	return [ctrlName, fieldName].join('.');
 }
 
+global.atc = function (ctrlName, fieldDefs, onInstantiate) {
+	// TODO: Support multiple `fieldDefs` arguments.
 
-function atc (moduleName, ctrlName, elements, initElement) {
-	// TODO: Deal with `moduleName` being the actual module already.
+	return ['$provide', '$controllerProvider', function ($provide, $controllerProvider) {
 
-	var json = {
-		nodes: [],
-		links: []
-	};
+		// Register each of the controller fields as a service.
+		angular.forEach(fieldDefs, function (fieldDef, fieldName) {
 
-	var buildContext;
-	angular.module(moduleName).run(['$parse', function ($parse) {
+			// Normalize annotations.
+			if (angular.isArray(fieldDef)) {
+				var inject = fieldDef.slice(0, -1);
+				fieldDef = fieldDef[fieldDef.length - 1];
+				fieldDef.$inject = inject;
+			}
+			// TODO: Deal with implicit annotations (argument names)?
+			fieldDef.$inject = fieldDef.$inject || [];
 
-		buildContext = function (deps, injectables, scope, includeShorts) {
-			if (arguments.length < 4)
-				includeShorts = true;
+			// Register service for this field.
+			$provide.factory(ani(
+				makeName(ctrlName, fieldName),
+				fieldDef.$inject.concat([function (deps) {
+					return new atc.Field(fieldName, fieldDef, deps);
+				}])
+			));
 
-			var context = {
-				$scope: scope
-			};
-
-			var prefix = ctrlName + '.';
-			deps.forEach(function (dep, i) {
-				var inj = injectables[i];
-				if (dep.substr(0, prefix.length) === prefix) {
-					inj = inj(scope);
-					if (includeShorts) {
-						// Enable `context['.controllerLevel.service']`
-						context[dep.substr(prefix.length - 1)] = inj;
-						// Enable `context.controllerLevel.service`
-						$parse(dep.substr(prefix.length)).assign(context, inj);
-					}
-				}
-				context[dep] = inj;
-			});
-
-			return context;
-		};
-
-	}]);
-
-	angular.module(moduleName).config(['$provide', '$controllerProvider', function ($provide, $controllerProvider) {
-
-		var ctrlDeps = [],
-			ctrlBehavior = {};
-
-		elements = flatten(elements);
-
-		angular.forEach(elements, function (element, elementName) {
-			if (angular.isFunction(initElement))
-				element = initElement(elementName, element);
-
-			if (!angular.isArray(element))
-				element = [element];
-
-			var invokable = element.filter(function (part) {
-				return angular.isFunction(part);
-			});
-
-			var svcSetup = invokable[0],
-				svcBehavior = invokable[1],
-				svcDeps = element.slice(0, element.indexOf(svcSetup)).
-					// Normalize names
-					map(function (dep) {
-						if (dep.charAt(0) === '.')
-							dep = ctrlName + dep;
-						// TODO: Would be nice if we could also resolve stuff like
-						// `.edit` into `controller.edit.x`, `controller.edit.y`
-						// etcetera.
-						return dep;
-					}).
-					// Take out duplicates
-					reduce(function (distincts, dep) {
-						if (distincts.indexOf(dep) === -1)
-							distincts.push(dep);
-						return distincts;
-					}, []);
-
-			var svcName = [ctrlName, elementName].join('.');
-
-			json.nodes.push({
-				name: elementName,
-				group: ctrlName,
-				// TODO: Naming
-				// setup: svcSetup && svcSetup.toString(),
-				// behavior: svcBehavior && svcBehavior.toString(),
-				deps: element.slice(0, element.indexOf(svcSetup))
-			});
-
-			ctrlDeps.push(svcName);
-
-			var svc = function () {
-				var svcArgs = [].slice.call(arguments);
-
-				if (angular.isFunction(svcBehavior))
-					ctrlBehavior[svcName] = function (scope, value) {
-						svcBehavior.call(buildContext(svcDeps, svcArgs, scope), value);
-					};
-
-				// TODO: Do not depend on lodash, and use instance of internal
-				// object type to detect whether scope should be inserted(?)
-				return _.memoize(function (scope) {
-					return svcSetup.call(buildContext(svcDeps, svcArgs, scope));
-				}, function (scope) {
-					return scope.$id;
-				});
-			};
-			svc.$inject = svcDeps;
-
-			$provide.factory(svcName, svc);
 		});
 
-		var ctrl = function ($scope) {
+		// The controller's constructor.
+		function ctor ($scope) {
+			var fields = [].slice.call(arguments, 1);
 
-			// TODO: If we would use the short names as keys in `ctrlDeps`, we
-			// could build a context with only short names, which then would
-			// also make more sense when extending `this`.
-
-			var context = buildContext(ctrlDeps, [].slice.call(arguments, 1), $scope, false);
-
-			angular.forEach(context, function (value, dep) {
-				if (dep in ctrlBehavior)
-					ctrlBehavior[dep]($scope, value);
+			// Create instances of all fields in the context of this controller
+			// instance, effectively starts running this controller's behavior.
+			angular.forEach(fields, function (field) {
+				field.instance($scope);
 			});
 
-			angular.extend(this, context);
+			if (angular.isFunction(onInstantiate))
+				onInstantiate($scope, fields);
+		}
 
-			this.serialize = json.graphviz;
+		// TODO: Use `ani()` here as soon as it supports "child operator".
+		ctor.$inject = ['$scope'].concat(Object.keys(fieldDefs).map(function (fieldName) {
+			return makeName(ctrlName, fieldName);
+		}));
 
-		};
-		ctrl.$inject = ['$scope'].concat(ctrlDeps);
+		$controllerProvider.register(ctrlName, ctor);
 
-		$controllerProvider.register(ctrlName, ctrl);
-
-	}]);
-
-	json.addLinks = function () {
-		var extIncluded = [];
-
-		json.nodes.forEach(function (node, targetIndex) {
-			node.deps.forEach(function (dep) {
-				if (dep.charAt(0) !== '.') {
-					return;	// remove to include external deps
-					if (extIncluded.indexOf(dep) === -1) {
-						extIncluded.push(dep);
-						json.nodes.push({
-							name: dep,
-							group: '[external]'
-						});
-					}
-				}
-
-				var link = {};
-				json.nodes.some(function (node, sourceIndex) {
-					if (node.name !== (dep.charAt(0) === '.' ? dep.substr(1) : dep)) return false;
-					link.source = sourceIndex;
-					return true;
-				});
-				link.target = targetIndex;
-				link.value = 1;
-				json.links.push(link);
-			});
-		});
-
-		json.addLinks = function () {};
-	};
-
-	json.graphviz = function () {
-		json.addLinks();
-
-		var gv = "digraph {";
-		json.nodes.forEach(function (node) {
-			gv += '"' + node.name + '";';
-		});
-		json.links.forEach(function (link) {
-			gv += '"' + json.nodes[link.source].name + '" -> "' + json.nodes[link.target].name + '";';
-		});
-		gv += "}";
-
-		return gv;
-	};
-
-	return json;
+	}];
 
 };
 
-global.atc = atc;
+global.atc.Field = function Field (name, fieldDef, deps) {
 
-}(window, angular);
+	var instances = {};
+	this.instance = function (scope) {
+		var key = scope ? scope.$id : null;
 
+		if (!(key in instances)) {
+			var context = {
+				name: this.name
+			};
+			if (scope)
+				context.$scope = scope;
+			instances[key] = fieldDef.call(context, deps);
+		}
+
+		return instances[key];
+	};
+
+	Object.defineProperties(this, {
+
+		name: {
+			enumerable: true,
+			value: name
+		}
+
+	});
+
+};
+
+}(window, window.angular, window.ani);
 ;!function (global) {
 
 global.bang = {};
@@ -217,11 +183,17 @@ global.bang = {};
 
 ;!function (bang, angular, Bacon) {
 
+	// TODO: no dependency on angular
+
 var _bang = {};
 
 // TODO: Where do we want to expose these globally?
 bang.util = _bang;
 
+// TODO: For properly dealing with the lazyiness issue as reported in my big-ass
+// laziness property issue on the bacon github, consider whether there may be
+// more concise approaches, such as what the one contributor in that issue
+// thread mentioned, sth like: `$(...).asEventStream('x').toProperty(MyNullType).map(...)`
 _bang.createProperty = function (value, invalidate, end) {
 	var args = [].slice.call(arguments);
 
@@ -305,7 +277,7 @@ _bang.defineProperty = _bang.createPropertyFromObjectProperty;
 _bang.createConditionalProperty = function (observable, condition) {
 	return Bacon.combineWith(
 		function (value, pass) {
-			if (pass) return value;
+			if (pass !== false) return value;
 		}, observable, condition
 	).filter(function (value) {
 		return value !== undefined;
@@ -322,11 +294,11 @@ _bang.toString = function () {
 
 var _angularBang = {};
 
-angular.module('bang', []).
+angular.module('bang', ['atc']).
 
 factory('Bacon', function () {
 	return Bacon;
-}).
+})/*.
 
 run(['$rootScope', '$parse', function ($rootScope, $parse) {
 
@@ -406,6 +378,7 @@ run(['$rootScope', '$parse', function ($rootScope, $parse) {
 		});
 	};
 
+	// TODO: Add variant that uses `doAction` instead of `onValue`
 	_angularBang.digest = function (scope, expressions) {
 		if (typeof expressions === 'string' && arguments.length > 2) {
 			var expression = expressions;
@@ -456,173 +429,177 @@ config(['$provide', function ($provide) {
 
 	}]);
 
-}]);
+}])*/;
 
 }(window.bang, window.angular, window.Bacon);
 
-;!function (bang, angular, Bacon) {
+;!function (bang, angular, atc, Bacon) {
 
-bang.controller = function (moduleName, ctrlName) {
-	var elements = angular.extend.apply(angular, [].slice.call(arguments, 2));
+bang.controller = function (ctrlName, fieldDefs) {
+	return atc(ctrlName, fieldDefs, function (scope, fields) {
 
-	atc(moduleName, ctrlName, elements, function (elementName, element) {
-		if (angular.isFunction(element) && element.atcify === true)
-			element = element(elementName);
-		return element;
+		angular.forEach(fields, function (field) {
+			// TODO: Listen for errors and log those when in debug mode.
+			// OR: read section Errors on Bacon site to understand exactly
+			// what is swallowed and when, as we may also want a try catch
+			// block here and there. For example, the fact that `.doAction`
+			// swallows exceptions is truly messed up.
+			var value = field.instance(scope);
+			if (value instanceof Bacon.Observable)
+				value.subscribe(angular.noop);
+		});
+
 	});
 };
 
-bang.stream = function () {
-	var args = [].slice.call(arguments);
+}(window.bang, window.angular, window.atc, window.Bacon);
+;!function (bang, angular, atc) {
 
-	var fn = function (elementName) {
+var injector = angular.injector();
 
-		var invokable = args.filter(function (part) {
-			return angular.isFunction(part);
-		});
-
-		var deps = args.slice(0, args.indexOf(setup));
-
-		var digest = typeof args[args.length - 1] === 'boolean' ?
-			args[args.length - 1] : false;
-
-		var setup = function () {
-			var me = new Bacon.Bus();
-			var setupContext = angular.extend({}, this);
-			delete setupContext.$scope;
-			var result = invokable[0].call(setupContext, me);
-			// TODO: We could throw a warning (in debug mode) if `invokable[0]`
-			// does not define an argument *and* `result` is not plugable.
-			if (result instanceof Bacon.Observable)
-				// TODO: Unplug under any condition?
-				me.plug(result);
-			// TODO: Do not expose the `Bus` interface in the returned stream.
-			return me;
-		};
-
-		var sidefx = function (me) {
-			if (angular.isFunction(invokable[1]))
-				invokable[1].apply(this, arguments);
-			if (digest)
-				this.$scope.digest(elementName, me);
-		};
-
-		return deps.concat([setup, sidefx]);
+bang.service = function (fn) {
+	var init = function (context, value) {
+		return (angular.isArray(fn) ? fn[fn.length - 1] : fn).call(this, value);
 	};
-	fn.atcify = true;
-	return fn;
+	init.$inject = injector.annotate(fn);
+
+	return bang.service.chain(init);
 };
 
-bang.stream.invocations = function () {
-	var fn = function (elementName) {
-		return function () {
-			return this.$scope.functionAsStream(elementName).map(function (args) {
-				// TODO: We should probably move this behavior (or a spread) to
-				// `functionAsStream()`.
-				return args[0];
+bang.service.chain = function (fn) {
+	if (angular.isFunction(fn))
+		fn.$inject = fn.$inject || [];
+
+	var env;
+
+	if (this === bang.service) {
+		env = function (deps) {
+			var context = this;
+
+			angular.forEach(deps, function (dep, key) {
+				if (dep instanceof atc.Field)
+					deps[key] = dep.instance(context.$scope);
+			});
+
+			env.run.forEach(function (fn) {
+				var result = fn.call(deps, context, env.value);
+				if (result !== undefined)
+					env.value = result;
+			});
+
+			return env.value;
+		};
+		env.run = [];
+		env.value = undefined;
+		env.$inject = [];
+		env.chain = bang.service.chain;
+	} else {
+		env = this;
+	}
+
+	env.run.push(angular.isArray(fn) ? fn[fn.length - 1] : fn);
+	// Make sure `injector.annotate(fn)` does not deduce argument names as
+	// dependencies.
+	env.$inject = env.$inject || [];
+	env.$inject = env.$inject.concat(injector.annotate(fn));
+
+	return env;
+};
+
+/*
+angular.module(...).config(bang.controller('myCtrl', {
+	a: bang.service(function () {
+		return 'x';
+	}).scopeDigest(),
+	b: bang.service(['.a', function () {
+		return this.a.toUpperCase();
+	}])
+}));
+
+angular.module(...).config(bang.service('mySvc', function () {
+	return 'x';
+}).scopeDigest());
+*/
+
+}(window.bang, window.angular, window.atc);
+;!function (bang, angular, atc, Bacon) {
+
+var injector = angular.injector();
+
+bang.property = function (fn) {
+	var init = function (context, value) {
+		return (angular.isArray(fn) ? fn[fn.length - 1] : fn).call(this, value);
+	};
+	init.$inject = injector.annotate(fn);
+
+	return bang.property.chain(init);
+};
+
+bang.property.chain = function (fn, makeLast) {
+	if (angular.isFunction(fn))
+		fn.$inject = fn.$inject || [];
+
+	var env;
+
+	if (this === bang.property) {
+		env = function (deps) {
+			var context = this;
+
+			angular.forEach(deps, function (dep, key) {
+				if (dep instanceof atc.Field)
+					deps[key] = dep.instance(context.$scope);
+			});
+
+			env.run.concat(env.runLast).forEach(function (fn) {
+				var result = fn.call(deps, context, env.value);
+				if (result !== undefined)
+					env.value = result;
+			});
+
+			return env.value.toProperty();
+		};
+		env.run = [];
+		env.runLast = [];
+		env.value = new Bacon.Bus();
+		env.$inject = [];
+		env.chain = bang.property.chain;
+		env.merge = bang.property.merge;
+		
+		// TODO: Move to its own chainable method (`scopeDigest()`)? How would
+		// it be useful?
+		var wrap = function (context, value) {
+			var assign = this.$parse(context.name).assign;
+			return value.doAction(function (v) {
+				// TODO: Implement more exact condition
+				if (angular.isObject(context.$scope))
+					if (angular.isFunction(context.$scope.$evalAsync))
+						context.$scope.$evalAsync(function () {
+							assign(context.$scope, v);
+						});
+					else
+						assign(context.$scope, v);
 			});
 		};
+		wrap.$inject = ['$parse'];
+		env.chain(wrap, true);
+	} else {
+		env = this;
+	}
+
+	(makeLast === true ? env.runLast : env.run).push(angular.isArray(fn) ? fn[fn.length - 1] : fn);
+	env.$inject = env.$inject || [];
+	env.$inject = env.$inject.concat(injector.annotate(fn));
+
+	return env;
+};
+
+bang.property.merge = function (fn) {
+	var wrap = function (context, value) {
+		return value.merge((angular.isArray(fn) ? fn[fn.length - 1] : fn).call(this/*, value*/));
 	};
-	fn.atcify = true;
-	return fn;
+	wrap.$inject = injector.annotate(fn);
+
+	return this.chain(wrap);
 };
 
-bang.property = function () {
-	var args = [].slice.call(arguments);
-
-	var fn = function (elementName) {
-
-		var invokable = args.filter(function (part) {
-			return angular.isFunction(part);
-		});
-
-		var deps = args.slice(0, args.indexOf(invokable[0]));
-
-		var digest = typeof args[args.length - 1] === 'boolean' ?
-			args[args.length - 1] : elementName.charAt(0) !== '_';
-
-		var setup = function () {
-			var me = new Bacon.Bus();
-			var setupContext = angular.extend({}, this);
-			delete setupContext.$scope;
-			var result = invokable[0].call(setupContext, me);
-			if (result instanceof Bacon.Observable)
-				// TODO: Unplug under any condition?
-				me.plug(result);
-			return me.toProperty();
-		};
-
-		var sidefx = function (me) {
-			if (angular.isFunction(invokable[1]))
-				invokable[1].apply(this, arguments);
-			if (digest)
-				this.$scope.digest(elementName, me);
-		};
-
-		return deps.concat([setup, sidefx]);
-	};
-	fn.atcify = true;
-	return fn;
-};
-
-bang.property.conditional = function (source, condition) {
-	return this('bang', source, condition, function () {
-		return this.bang.createConditionalProperty(this[source], this[condition]);
-	});
-};
-
-/**
- * Defines an observable property `element` that follows *corresponding* scope
- * value.
- *
- * @static
- * @memberOf bang.property
- * @param {...string} [dependencies] Dependencies to be injected into
- *  context of `merge`.
- * @param {Function} merge Observable whose values should be merged into watched scope values.
- * @returns {Function} Returns `atc`ifiable element factory method.
- */
-bang.property.watch = function () {
-	// Ending up at `arguments[-1]` should be avoided as [it behaves
-	// inconsistently in
-	// Safari](https://twitter.com/timmolendijk/status/578246289554554881).
-	// [Very inconsistently](https://twitter.com/timmolendijk/status/57824705145
-	// 8273280).
-	var merge = arguments.length > 0 ? arguments[arguments.length - 1] : undefined,
-		deps = [].slice.call(arguments, 0, arguments.length - 1);
-
-	var fn = function (elementName) {
-		// TODO: Make sure that `atc` does not choke on duplicate dependencies.
-		return ['Bacon'].concat(deps).concat([function () {
-			var setupContext = angular.extend({}, this);
-			if (deps.indexOf('$scope') === -1)
-				delete setupContext.$scope;
-			if (deps.indexOf('Bacon') === -1)
-				delete setupContext.Bacon;
-			return this.Bacon.mergeAll(
-				angular.isFunction(merge) ?
-					// TODO: Pass `me` to `merge` just like in other helpers?
-					merge.call(setupContext) : this.Bacon.never(),
-				this.$scope.watchAsProperty(elementName).skip(1)
-			).toProperty();
-		}, function (me) {
-			this.$scope.digest(elementName, me);
-		}]);
-	};
-	fn.atcify = true;
-	return fn;
-};
-
-bang.value = function (value) {
-	var fn = function (elementName) {
-		return [function () {
-			return value;
-		}, function (me) {
-			this.$scope[elementName] = me;
-		}];
-	};
-	fn.atcify = true;
-	return fn;
-};
-
-}(window.bang, window.angular, window.Bacon);
+}(window.bang, window.angular, window.atc, window.Bacon);

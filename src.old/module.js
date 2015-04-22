@@ -2,11 +2,11 @@
 
 var _angularBang = {};
 
-angular.module('bang', ['atc']).
+angular.module('bang', []).
 
 factory('Bacon', function () {
 	return Bacon;
-})/*.
+}).
 
 run(['$rootScope', '$parse', function ($rootScope, $parse) {
 
@@ -137,6 +137,6 @@ config(['$provide', function ($provide) {
 
 	}]);
 
-}])*/;
+}]);
 
 }(window.bang, window.angular, window.Bacon);

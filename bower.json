@@ -24,6 +24,7 @@
   ],
   "dependencies": {
     "bacon": "~0.7.50",
+    "bacon-extras": "git@github.com:nouncy/bacon-extras.git",
     "angular-testable-controller": "git@github.com:nouncy/angular-testable-controller.git"
   },
   "devDependencies": {
