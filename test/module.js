@@ -2,9 +2,10 @@ describe("angular.module('bang')", function () {
 
 	beforeEach(module('bang'));
 
-	var $rootScope, Bacon, bang;
-	beforeEach(inject(function (_$rootScope_, _Bacon_, _bang_) {
+	var $rootScope, $location, Bacon, bang;
+	beforeEach(inject(function (_$rootScope_, _$location_, _Bacon_, _bang_) {
 		$rootScope = _$rootScope_;
+		$location = _$location_;
 		Bacon = _Bacon_;
 		bang = _bang_;
 	}));
@@ -309,15 +310,33 @@ describe("angular.module('bang')", function () {
 
 	});
 
-	describe("$rootScope", function () {
+	describe("bang.locationAsProperty", function () {
 
-		it("exposes all functions from service `bang` on `$rootScope`", function () {
+		it("provides `$location` as the callback context", function () {
+
+			bang.locationAsProperty(function () {
+				expect(this).to.equal($location);
+			});
+
+		});
+
+	});
+
+	describe("decorations", function () {
+
+		it("exposes functions from service `bang` on `$rootScope`", function () {
 
 			expect($rootScope.createStream).to.be.a.function;
 			expect($rootScope.createProperty).to.be.a.function;
 			expect($rootScope.watchAsProperty).to.be.a.function;
 			expect($rootScope.functionAsStream).to.be.a.function;
 			expect($rootScope.digestObservable).to.be.a.function;
+
+		});
+
+		it("exposes functions from service `bang` on `$location`", function () {
+
+			expect($location.toProperty).to.be.a.function;
 
 		});
 

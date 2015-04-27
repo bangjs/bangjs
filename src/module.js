@@ -1,14 +1,14 @@
 ;!function (bang, angular, Bacon) {
 
+var svc = {};
+
 angular.module('bang', ['atc']).
 
 value('Bacon', Bacon).
 
-factory('bang', ['$parse', function ($parse) {
+factory('bang', ['$rootScope', '$parse', '$location', function ($rootScope, $parse, $location) {
 
-	var fns = {};
-
-	fns.createScopeStream = function (scope, subscribe) {
+	svc.createScopeStream = function (scope, subscribe) {
 		return Bacon.fromBinder(function (sink) {
 			function sinkEvent (e) {
 				if (sink(e) === Bacon.noMore)
@@ -37,13 +37,13 @@ factory('bang', ['$parse', function ($parse) {
 		});
 	};
 
-	fns.createScopeProperty = function (scope, getValue, subscribe) {
+	svc.createScopeProperty = function (scope, getValue, subscribe) {
 		var initial;
 		function getInitialValue () {
 			return initial;
 		}
 
-		return fns.createScopeStream(scope, function (next, end) {
+		return svc.createScopeStream(scope, function (next, end) {
 			// As soon as this observable loses its laziness, the first thing we
 			// should do is generate an initial value, or else we end up using
 			// the value that results from the second call to `getValue` as
@@ -66,8 +66,8 @@ factory('bang', ['$parse', function ($parse) {
 		});
 	};
 
-	fns.watchAsProperty = function (scope, expression) {
-		return fns.createScopeProperty(scope, function () {
+	svc.watchAsProperty = function (scope, expression) {
+		return svc.createScopeProperty(scope, function () {
 
 			return $parse(expression)(this);
 
@@ -79,7 +79,7 @@ factory('bang', ['$parse', function ($parse) {
 	};
 
 	var sendToStreams = {};
-	fns.functionAsStream = function (scope, name) {
+	svc.functionAsStream = function (scope, name) {
 		sendToStreams[name] = sendToStreams[name] || [];
 
 		scope[name] = scope[name] || function () {
@@ -89,7 +89,7 @@ factory('bang', ['$parse', function ($parse) {
 			});
 		};
 
-		return fns.createScopeStream(scope, function (next) {
+		return svc.createScopeStream(scope, function (next) {
 
 			sendToStreams[name].push(next);
 
@@ -101,7 +101,7 @@ factory('bang', ['$parse', function ($parse) {
 		});
 	};
 
-	fns.digestObservable = function (scope, expression, observable) {
+	svc.digestObservable = function (scope, expression, observable) {
 		var assign = $parse(expression).assign;
 
 		return observable.doAction(function (value) {
@@ -111,15 +111,23 @@ factory('bang', ['$parse', function ($parse) {
 		});
 	};
 
-	return fns;
+	svc.locationAsProperty = function (getValue) {
+		return svc.createScopeProperty($rootScope, function () {
+			return getValue.call($location);
+		}, function (next, invalidate) {
+			return this.$on('$locationChangeSuccess', invalidate);
+		});
+	};
+
+	return svc;
 
 }]).
 
 config(['$provide', function ($provide) {
 
-	$provide.decorator('$rootScope', ['$delegate', 'bang', function ($delegate, bang) {
+	$provide.decorator('$rootScope', ['$delegate', function ($delegate) {
 
-		var fns = {};
+		var decorate = {};
 
 		angular.forEach({
 			createStream: 'createScopeStream',
@@ -129,13 +137,25 @@ config(['$provide', function ($provide) {
 			digestObservable: 'digestObservable'
 		}, function (from, to) {
 
-			fns[to] = function () {
-				return bang[from].apply(bang, [this].concat([].slice.call(arguments)));
+			decorate[to] = function () {
+				return svc[from].apply(svc, [this].concat([].slice.call(arguments)));
 			};
 			
 		});
 
-		angular.extend(Object.getPrototypeOf($delegate), fns);
+		angular.extend(Object.getPrototypeOf($delegate), decorate);
+
+		return $delegate;
+
+	}]);
+
+	$provide.decorator('$location', ['$delegate', function ($delegate) {
+
+		angular.extend(Object.getPrototypeOf($delegate), {
+			toProperty: function () {
+				return svc.locationAsProperty.apply(svc, arguments);
+			}
+		});
 
 		return $delegate;
 
