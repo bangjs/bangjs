@@ -6,7 +6,7 @@ angular.module('bang', ['atc']).
 
 value('Bacon', Bacon).
 
-factory('bang', ['$rootScope', '$parse', '$location', function ($rootScope, $parse, $location) {
+run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $location) {
 
 	svc.createScopeStream = function (scope, subscribe) {
 		return Bacon.fromBinder(function (sink) {
@@ -122,6 +122,8 @@ factory('bang', ['$rootScope', '$parse', '$location', function ($rootScope, $par
 	return svc;
 
 }]).
+
+value('bang', svc).
 
 config(['$provide', function ($provide) {
 

@@ -6,7 +6,7 @@ describe("bang.property", function () {
 			a: bang.property(angular.noop)
 		}));
 
-		inject(['myCtrl.a', function (a) {
+		inject(['Bacon', 'myCtrl.a', function (Bacon, a) {
 			expect(a.instance()).to.be.instanceof(Bacon.Property);
 		}]);
 

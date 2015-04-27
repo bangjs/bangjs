@@ -89,12 +89,28 @@ angular.module('ani', []).factory('nsInjector', ['$injector', '$parse', function
 
 angular.module('atc', ['ani']);
 
+var CHILD_SEPARATOR = '.';
+
 function makeName (ctrlName, fieldName) {
-	return [ctrlName, fieldName].join('.');
+	return [ctrlName, fieldName].join(CHILD_SEPARATOR);
+}
+
+function unnestKeys (obj, path) {
+	path = path || [];
+	var flat = {};
+	angular.forEach(obj, function (value, key) {
+		var thisPath = path.concat([key]);
+		if (angular.isArray(value) || angular.isFunction(value))
+			flat[thisPath.join(CHILD_SEPARATOR)] = value;
+		else
+			angular.extend(flat, unnestKeys(value, thisPath));
+	});
+	return flat;
 }
 
 global.atc = function (ctrlName, fieldDefs, onInstantiate) {
 	// TODO: Support multiple `fieldDefs` arguments.
+	fieldDefs = unnestKeys(fieldDefs);
 
 	return ['$provide', '$controllerProvider', function ($provide, $controllerProvider) {
 
@@ -155,6 +171,9 @@ global.atc.Field = function Field (name, fieldDef, deps) {
 			var context = {
 				name: this.name
 			};
+			// TODO: `context.scope` would probably be a better name, as I am
+			// not sure whether our concept requires it to be an AngularJS
+			// scope.
 			if (scope)
 				context.$scope = scope;
 			instances[key] = fieldDef.call(context, deps);
@@ -189,7 +208,7 @@ angular.module('bang', ['atc']).
 
 value('Bacon', Bacon).
 
-factory('bang', ['$rootScope', '$parse', '$location', function ($rootScope, $parse, $location) {
+run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $location) {
 
 	svc.createScopeStream = function (scope, subscribe) {
 		return Bacon.fromBinder(function (sink) {
@@ -305,6 +324,8 @@ factory('bang', ['$rootScope', '$parse', '$location', function ($rootScope, $par
 	return svc;
 
 }]).
+
+value('bang', svc).
 
 config(['$provide', function ($provide) {
 
