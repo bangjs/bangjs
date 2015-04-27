@@ -183,256 +183,150 @@ global.bang = {};
 
 ;!function (bang, angular, Bacon) {
 
-	// TODO: no dependency on angular
-
-var _bang = {};
-
-// TODO: Where do we want to expose these globally?
-bang.util = _bang;
-
-// TODO: For properly dealing with the lazyiness issue as reported in my big-ass
-// laziness property issue on the bacon github, consider whether there may be
-// more concise approaches, such as what the one contributor in that issue
-// thread mentioned, sth like: `$(...).asEventStream('x').toProperty(MyNullType).map(...)`
-_bang.createProperty = function (value, invalidate, end) {
-	var args = [].slice.call(arguments);
-
-	var property = new Bacon.Property(function (sink) {
-		var initial = value();
-		if (initial !== _bang)	// TODO
-			sink(new Bacon.Initial(initial));
-
-		function sinkNext (next) {
-			if (arguments.length === 0)
-				next = value();
-
-			if (sink(new Bacon.Next(next)) === Bacon.noMore)
-				unsubscribe();
-		}
-
-		var dispose = [
-			invalidate(sinkNext, function () {
-				// Strip arguments to make sure we do not accidentally pass
-				// on a next value.
-				sinkNext();
-			})
-		];
-
-		if (angular.isFunction(end))
-			dispose.push(
-				end(function () {
-					sink(new Bacon.End());
-				})
-			);
-
-		function unsubscribe () {
-			// TODO: Support nested lists in `dispose`.
-			dispose.forEach(function (fn) {
-				if (angular.isFunction(fn)) fn();
-			});
-		}
-
-		return unsubscribe;
-	});
-
-	return property.withDescription.apply(
-		property,
-		[this, 'property'].concat(args)
-	);
-};
-
-_bang.createPropertyFromObjectProperty = function (object, propertyName) {
-	var property = {
-		notify: angular.noop
-	};
-	if (propertyName in object)
-		property.value = object[propertyName];
-
-	Object.defineProperty(object, propertyName, {
-		get: function () {
-			return 'value' in property ? property.value : _bang;	// TODO
-		},
-		set: function (value) {
-			property.value = value;
-			property.notify();
-		},
-		configurable: true
-   	});
-
-	return this.createProperty(function () {
-		return object[propertyName];
-	}, function (next) {
-		property.notify = function () {
-			next(object[propertyName]);
-		};
-		return function () {
-			property.notify = angular.noop;
-		};
-	});
-};
-
-// Convenience alias
-_bang.defineProperty = _bang.createPropertyFromObjectProperty;
-
-_bang.createConditionalProperty = function (observable, condition) {
-	return Bacon.combineWith(
-		function (value, pass) {
-			if (pass !== false) return value;
-		}, observable, condition
-	).filter(function (value) {
-		return value !== undefined;
-	}).skipDuplicates();
-};
-
-_bang.toString = function () {
-	return 'bang';
-};
-
-}(window.bang, window.angular, window.Bacon);
-
-;!function (bang, angular, Bacon) {
-
-var _angularBang = {};
-
 angular.module('bang', ['atc']).
 
-factory('Bacon', function () {
-	return Bacon;
-})/*.
+value('Bacon', Bacon).
 
-run(['$rootScope', '$parse', function ($rootScope, $parse) {
+factory('bang', ['$parse', function ($parse) {
 
-	angular.extend(_angularBang, bang.util);
+	var fns = {};
 
-	// TODO: This one feels a bit clunky, with its optional `scope` argument.
-	// Shouldn't it have a version on `$rootScope`?
-	_angularBang.createScopeProperty = function (scope, value, invalidate) {
-		var args = [].slice.call(arguments);
-
-		if (args.length < 3) {
-			invalidate = value;
-			value = scope;
-			scope = $rootScope;
-		}
-
-		var property = this.createProperty(
-			value,
-			invalidate.bind(scope),
-			function (end) {
-				return scope.$on('$destroy', end);
-			}
-		);
-
-		return property.withDescription.apply(
-			property,
-			[this, 'scopeProperty'].concat(args)
-		);
-	};
-
-	_angularBang.watchAsProperty = function (scope, expression) {
-		var args = [].slice.call(arguments);
-		
-		var initial, isInitial = true;
-		var property = this.createScopeProperty(
-			scope,
-			function () {
-				initial = $parse(expression)(scope);
-				return initial;
-			},
-			function (next) {
-				return scope.$watch(expression, function (value) {
-					if (isInitial) {
-						isInitial = false;
-						if (value === initial) return;
-					}
-					next(value);
-				});
-			}
-		);
-
-		return property.withDescription.apply(
-			property,
-			[this, 'watchAsProperty'].concat(args)
-		);
-	};
-
-	// TODO: Deal with scenario of binding twice to the same function name.
-	_angularBang.functionAsStream = function (scope, name) {
-		scope[name] = angular.noop;
-
+	fns.createScopeStream = function (scope, subscribe) {
 		return Bacon.fromBinder(function (sink) {
-			var unsubscribe = scope.$on('$destroy', function () {
-				sink(new Bacon.End());
-			});
-
-			scope[name] = function () {
-				// TODO: Take in argument definition at `functionAsStream`, so
-				// we can construct an arguments object with named keys here.
-				var args = [].slice.call(arguments);
-				// TODO: Use `_.spread()` here?
-				if (sink.call(this, args) === Bacon.noMore)
+			function sinkEvent (e) {
+				if (sink(e) === Bacon.noMore)
 					unsubscribe();
+			}
+
+			var dispose = [];
+
+			dispose.push(subscribe.call(scope, function (value) {
+				sinkEvent(new Bacon.Next(value));
+			}, function () {
+				sinkEvent(new Bacon.End());
+			}));
+
+			dispose.push(scope.$on('$destroy', function () {
+				sinkEvent(new Bacon.End());
+			}));
+			
+			function unsubscribe () {
+				dispose.forEach(function (fn) {
+					if (angular.isFunction(fn)) fn();
+				});
 			};
 
 			return unsubscribe;
 		});
 	};
 
-	// TODO: Add variant that uses `doAction` instead of `onValue`
-	_angularBang.digest = function (scope, expressions) {
-		if (typeof expressions === 'string' && arguments.length > 2) {
-			var expression = expressions;
-			expressions = {};
-			expressions[expression] = arguments[2];
+	fns.createScopeProperty = function (scope, getValue, subscribe) {
+		var initial;
+		function getInitialValue () {
+			return initial;
 		}
 
-		angular.forEach(expressions, function (observable, expression) {
-			var assign = $parse(expression).assign;
+		return fns.createScopeStream(scope, function (next, end) {
+			// As soon as this observable loses its laziness, the first thing we
+			// should do is generate an initial value, or else we end up using
+			// the value that results from the second call to `getValue` as
+			// initial value.
+			initial = getValue.call(this);
 
-			scope.$on('$destroy', observable.onValue(function (value) {
-				scope.$evalAsync(function () {
-					// TODO: Make it possible to enable debug logging through
-					// some flag somehow.
-					// console.log('scope.', expression, '=', value);
-					assign(scope, value);
-				});
-			}));
+			var sinkNext = function (value) {
+				if (arguments.length === 0)
+					value = getValue.call(this);
+				next(value);
+			}.bind(this);
+
+			return subscribe.call(this, sinkNext, function () {
+				// Make sure no value argument is passed along to make it act as
+				// an invalidate.
+				sinkNext();
+			}, end);
+		}).toProperty(getInitialValue).map(function (value) {
+			return value === getInitialValue ? getInitialValue() : value;
 		});
 	};
 
-}]).
+	fns.watchAsProperty = function (scope, expression) {
+		return fns.createScopeProperty(scope, function () {
 
-factory('bang', function () {
-	return _angularBang;
-}).
+			return $parse(expression)(this);
+
+		}, function (next) {
+
+			return this.$watch(expression, next);
+
+		}).skipDuplicates();
+	};
+
+	var sendToStreams = {};
+	fns.functionAsStream = function (scope, name) {
+		sendToStreams[name] = sendToStreams[name] || [];
+
+		scope[name] = scope[name] || function () {
+			var args = [].slice.call(arguments);
+			sendToStreams[name].forEach(function (send) {
+				send(args);
+			});
+		};
+
+		return fns.createScopeStream(scope, function (next) {
+
+			sendToStreams[name].push(next);
+
+			return function () {
+				sendToStreams[name].splice(sendToStreams[name].indexOf(next), 1);
+				if (sendToStreams[name].length === 0)
+					delete sendToStreams[name];
+			};
+		});
+	};
+
+	fns.digestObservable = function (scope, expression, observable) {
+		var assign = $parse(expression).assign;
+
+		return observable.doAction(function (value) {
+			scope.$evalAsync(function () {
+				assign(scope, value);
+			});
+		});
+	};
+
+	return fns;
+
+}]).
 
 config(['$provide', function ($provide) {
 
-	$provide.decorator('$rootScope', ['$delegate', function ($delegate) {
+	$provide.decorator('$rootScope', ['$delegate', 'bang', function ($delegate, bang) {
 
-		angular.extend(
-			Object.getPrototypeOf($delegate),
-			{
-				watchAsProperty: function () {
-					return _angularBang.watchAsProperty.apply(_angularBang, [this].concat([].slice.call(arguments)));
-				},
-				functionAsStream: function () {
-					return _angularBang.functionAsStream.apply(_angularBang, [this].concat([].slice.call(arguments)));
-				},
-				digest: function () {
-					return _angularBang.digest.apply(_angularBang, [this].concat([].slice.call(arguments)));
-				}
-			}
-		);
+		var fns = {};
+
+		angular.forEach({
+			createStream: 'createScopeStream',
+			createProperty: 'createScopeProperty',
+			watchAsProperty: 'watchAsProperty',
+			functionAsStream: 'functionAsStream',
+			digestObservable: 'digestObservable'
+		}, function (from, to) {
+
+			fns[to] = function () {
+				return bang[from].apply(bang, [this].concat([].slice.call(arguments)));
+			};
+			
+		});
+
+		angular.extend(Object.getPrototypeOf($delegate), fns);
 
 		return $delegate;
 
 	}]);
 
-}])*/;
+}]);
 
 }(window.bang, window.angular, window.Bacon);
-
 ;!function (bang, angular, atc, Bacon) {
 
 bang.controller = function (ctrlName, fieldDefs) {
@@ -446,7 +340,9 @@ bang.controller = function (ctrlName, fieldDefs) {
 			// swallows exceptions is truly messed up.
 			var value = field.instance(scope);
 			if (value instanceof Bacon.Observable)
-				value.subscribe(angular.noop);
+				value.subscribe(function (v) {
+					// console.log(field.name, v);
+				});
 		});
 
 	});
