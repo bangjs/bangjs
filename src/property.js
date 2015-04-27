@@ -64,7 +64,10 @@ bang.property.chain = function (fn, makeLast) {
 
 	(makeLast === true ? env.runLast : env.run).push(angular.isArray(fn) ? fn[fn.length - 1] : fn);
 	env.$inject = env.$inject || [];
-	env.$inject = env.$inject.concat(injector.annotate(fn));
+	injector.annotate(fn).forEach(function (dep) {
+		if (env.$inject.indexOf(dep) === -1)
+			env.$inject.push(dep);
+	});
 
 	return env;
 };

@@ -25,12 +25,10 @@ module.exports = function(config) {
 			'src/core.js',
 			'src/module.js',
 			'src/controller.js',
-			'src/service.js',
 			'src/property.js',
 
 			'test/module.js',
 			'test/controller.js',
-			'test/service.js',
 			'test/property.js'
 		],
 

@@ -9,7 +9,6 @@ gulp.task('js', function () {
 		'src/core.js',
 		'src/module.js',
 		'src/controller.js',
-		'src/service.js',
 		'src/property.js'
 	]).pipe(
 		gulpConcat('bang.js')
