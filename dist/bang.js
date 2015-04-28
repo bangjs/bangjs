@@ -378,8 +378,7 @@ run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $locatio
  * Exposes AngularJS-level helper functions.
  *
  * ```js
- * angular.module('myModule', ['bang']).
- * factory('myCtrl', ['bang', function (bang) {
+ * angular.module('myModule', ['bang']).factory('myCtrl', ['bang', function (bang) {
  * 
  *   // Enjoy your `bang`.
  *     
