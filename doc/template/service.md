@@ -1,4 +1,5 @@
 # Service `{$ doc.name $}`
-## in module `{$ doc.module $}`
+
+Lives in module `{$ doc.moduleDoc.id | link(doc.moduleDoc.name) $}`.
 
 {$ doc.description $}

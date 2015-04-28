@@ -26,10 +26,11 @@
   },
   "homepage": "https://github.com/nouncy/bangjs",
   "devDependencies": {
+    "dgeni": "^0.4.1",
+    "dgeni-markdown": "0.0.3",
+    "dgeni-packages": "^0.10.13",
     "gulp": "^3.8.11",
     "gulp-concat": "^2.5.2",
-    "dgeni": "^0.4.1",
-    "dgeni-packages": "^0.10.13",
     "karma": "^0.12.31",
     "karma-mocha": "^0.1.10",
     "karma-sinon-chai": "^0.3.0",

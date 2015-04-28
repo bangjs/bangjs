@@ -207,7 +207,6 @@ var svc = {};
 /**
  * @ngdoc module
  * @name bang
- *
  * @description
  * The main module.
  *
@@ -219,7 +218,6 @@ angular.module('bang', ['atc']).
  * @ngdoc service
  * @name Bacon
  * @module bang
- *
  * @description
  * Exposes {@link https://baconjs.github.io/ Bacon.js} as an AngularJS service.
  */

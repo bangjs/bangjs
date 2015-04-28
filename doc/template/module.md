@@ -18,7 +18,7 @@
 ## {$ group.groupType|capitalize $} components
 
 {% for component in group.components -%}
-* [{$ component.name $}]({$ component.outputPath $})
+* `{$ component.id | link(component.name) $}`
 {% endfor -%}
 {%- endif %}
 

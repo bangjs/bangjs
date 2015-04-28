@@ -4,9 +4,11 @@ module.exports = new Package('bang', [
 	require('dgeni-packages/ngdoc')
 ]).
 
-config(function (log) {
+config(function (log, getLinkInfo) {
 
 	log.level = 'warn';
+
+	getLinkInfo.relativeLinks = true;
 
 }).
 
@@ -31,8 +33,19 @@ config(function (templateFinder) {
 		'${ doc.id }.${ doc.docType }.md',
 		'${ doc.id }.md',
 		'${ doc.docType }.md',
-		'empty.md'
+		'base.md'
 	];
+
+}).
+
+config(function (inlineTagProcessor, getInjectables) {
+
+	[].push.apply(
+		inlineTagProcessor.inlineTagDefinitions,
+		getInjectables([
+			require('dgeni-markdown/inline-tag-defs/link')
+		])
+	);
 
 }).
 
@@ -40,17 +53,17 @@ config(function (computePathsProcessor) {
 
 	computePathsProcessor.pathTemplates = [{
 		docTypes: ['service'],
-		pathTemplate: '.',
+		pathTemplate: '${ name }.md',
 		outputPathTemplate: '${ module }/${ name }.md'
 	}, {
 		docTypes: ['module'],
-		pathTemplate: '.',
+		pathTemplate: 'index.md',
 		outputPathTemplate: '${ name }/index.md'
 	}, {
 		docTypes: ['componentGroup'],
-		pathTemplate: '.',
 		// TODO: Is this really the recommended approach to prevent this
 		// document to end up in its own rendered page?
+		pathTemplate: '.',
 		outputPathTemplate: '/dev/null'
 	}];
 

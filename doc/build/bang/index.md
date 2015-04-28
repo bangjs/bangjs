@@ -2,7 +2,7 @@
 
 The main module.
 
-It depends on <a href="https://github.com/nouncy/angular-testable-controller">angular-testable-controller</a>.
+It depends on (angular-testable-controller)[https://github.com/nouncy/angular-testable-controller].
 
 
 
@@ -10,5 +10,5 @@ It depends on <a href="https://github.com/nouncy/angular-testable-controller">an
 
 ## Service components
 
-* [Bacon](bang/Bacon.md)
-* [bang](bang/bang.md)
+* `(Bacon)[Bacon.md]`
+* `(bang)[bang.md]`

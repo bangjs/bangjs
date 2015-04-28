@@ -1,4 +1,5 @@
 # Service `Bacon`
-## in module `bang`
 
-Exposes <a href="https://baconjs.github.io/">Bacon.js</a> as an AngularJS service.
+Lives in module `(bang)[index.md]`.
+
+Exposes (Bacon.js)[https://baconjs.github.io/] as an AngularJS service.
