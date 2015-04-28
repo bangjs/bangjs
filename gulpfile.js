@@ -1,5 +1,6 @@
 var gulp = require('gulp'),
-	gulpConcat = require('gulp-concat');
+	gulpConcat = require('gulp-concat'),
+	Dgeni = require('dgeni');
 
 
 gulp.task('js', function () {
@@ -18,4 +19,10 @@ gulp.task('js', function () {
 
 });
 
-gulp.task('default', ['js']);
+gulp.task('doc', function () {
+
+	return new Dgeni([require('./dgeni.conf')]).generate();
+
+});
+
+gulp.task('default', ['js', 'doc']);

@@ -204,8 +204,25 @@ global.bang = {};
 
 var svc = {};
 
+/**
+ * @ngdoc module
+ * @name bang
+ *
+ * @description
+ * The main module.
+ *
+ * It depends on {@link https://github.com/nouncy/angular-testable-controller}.
+ */
 angular.module('bang', ['atc']).
 
+/**
+ * @ngdoc service
+ * @name Bacon
+ * @module bang
+ *
+ * @description
+ * Exposes {@link https://baconjs.github.io/ Bacon.js} as an AngularJS service.
+ */
 value('Bacon', Bacon).
 
 run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $location) {
@@ -325,6 +342,14 @@ run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $locatio
 
 }]).
 
+/**
+ * @ngdoc service
+ * @name bang
+ * @module bang
+ *
+ * @description
+ * Exposes AngularJS-level helper functions.
+ */
 value('bang', svc).
 
 config(['$provide', function ($provide) {

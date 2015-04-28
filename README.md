@@ -4,4 +4,4 @@ Uses [angular-testable-controller](https://github.com/nouncy/angular-testable-co
 
 Sample applications:
 
-* [Image search](http://jsbin.com/qukipa/1/)
+* [Image search](http://jsbin.com/qukipa/4)
