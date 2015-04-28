@@ -225,6 +225,19 @@ value('Bacon', Bacon).
 
 run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $location) {
 
+	/**
+	 * @ngdoc method
+	 * @name module:bang.service:bang#createScopeStream
+	 * @description
+	 * Creates a stream that automatically ends when provided scope is
+	 * destroyed.
+	 * @param {$rootScope.Scope} scope Context in which stream should operate.
+	 * @param {function(Function, Function)} subscribe Stream binder function
+	 *   that describes its incoming events. Its first argument is a function
+	 *   that can be called to issue a next event with given value. Its second
+	 *   argument is a function that can be called to end the stream.
+	 * @returns {Bacon.EventStream} The created event stream.
+	 */
 	svc.createScopeStream = function (scope, subscribe) {
 		return Bacon.fromBinder(function (sink) {
 			function sinkEvent (e) {
@@ -344,7 +357,9 @@ run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $locatio
  * @ngdoc service
  * @name bang
  * @module bang
- *
+ * @requires $rootScope
+ * @requires $parse
+ * @requires $location
  * @description
  * Exposes AngularJS-level helper functions.
  */
