@@ -5,7 +5,7 @@ Exposes AngularJS-level helper functions.
 
 ## bang.createScopeStream(scope, subscribe)
 
-:octocat: [`src/module.js#L154`](https://github.com/nouncy/bangjs/tree/master/src/module.js#L154)
+:octocat: [`src/module.js#L26`](https://github.com/nouncy/bangjs/tree/master/src/module.js#L26)
 
 Creates a stream that automatically ends when provided scope is
 destroyed.
