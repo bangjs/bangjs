@@ -29,6 +29,20 @@ run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $locatio
 	 * @description
 	 * Creates a stream that automatically ends when provided scope is
 	 * destroyed.
+	 *
+	 * ```js
+	 * angular.module('myModule').controller(['$scope', function ($scope) {
+	 * 	 
+	 *   var stream = $scope.createStream(function (next, end) {
+	 *     next(1);
+	 *     setTimeout(function () {
+	 *       next(2);
+	 *       end();
+	 *     }, 2000);
+	 *   });
+	 *   
+	 * }]);
+	 * ```
 	 * @param {$rootScope.Scope} scope Context in which stream should operate.
 	 * @param {function(Function, Function)} subscribe Stream binder function
 	 *   that describes its incoming events. Its first argument is a function
@@ -160,6 +174,14 @@ run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $locatio
  * @requires $location
  * @description
  * Exposes AngularJS-level helper functions.
+ *
+ * ```js
+ * angular.module('myModule', ['bang']).factory('myCtrl', ['bang', function (bang) {
+ * 
+ *   // Enjoy your `bang`.
+ *     
+ * }]);
+ * ```
  */
 value('bang', svc).
 

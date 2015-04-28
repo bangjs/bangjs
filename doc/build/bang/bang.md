@@ -3,12 +3,34 @@ Module [`bang`](index.md) :boom:
 
 Exposes AngularJS-level helper functions.
 
+```js
+angular.module('myModule', ['bang']).factory('myCtrl', ['bang', function (bang) {
+
+  // Enjoy your `bang`.
+    
+}]);
+```
+
 ## bang.createScopeStream(scope, subscribe)
 
 :octocat: [`src/module.js#L26`](https://github.com/nouncy/bangjs/tree/master/src/module.js#L26)
 
 Creates a stream that automatically ends when provided scope is
 destroyed.
+
+```js
+angular.module('myModule').controller(['$scope', function ($scope) {
+	 
+  var stream = $scope.createStream(function (next, end) {
+    next(1);
+    setTimeout(function () {
+      next(2);
+      end();
+    }, 2000);
+  });
+  
+}]);
+```
 
 :baby_bottle: **scope** _$rootScope.Scope_
 
