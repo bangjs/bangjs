@@ -43,7 +43,7 @@ config(function (inlineTagProcessor, getInjectables) {
 	[].push.apply(
 		inlineTagProcessor.inlineTagDefinitions,
 		getInjectables([
-			require('dgeni-markdown/inline-tag-defs/link')
+			require('./doc/lib/inline-tag-defs/link')
 		])
 	);
 
