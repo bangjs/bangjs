@@ -1,27 +1,27 @@
+Module [`bang`](index.md) :boom:
 # Service `bang`
-
-Lives in module [`bang`](index.md).
 
 Exposes AngularJS-level helper functions.
 
+## bang.createScopeStream(scope, subscribe)
 
-### Method `bang.createScopeStream(scope, subscribe)`
+:octocat: [`src/module.js#L154`](https://github.com/nouncy/bangjs/tree/master/src/module.js#L154)
 
 Creates a stream that automatically ends when provided scope is
 destroyed.
 
-##### Argument `scope`
+:baby_bottle: **scope** _$rootScope.Scope_
 
-_$rootScope.Scope_ — Context in which stream should operate.
+Context in which stream should operate.
 
-##### Argument `subscribe`
+:baby_bottle: **subscribe** _function(Function, Function)_
 
-_function(Function, Function)_ — Stream binder function
+Stream binder function
   that describes its incoming events. Its first argument is a function
   that can be called to issue a next event with given value. Its second
   argument is a function that can be called to end the stream.
 
-##### Returns
+:dash: **Returns** _Bacon.EventStream_
 
-_Bacon.EventStream_ — The created event stream.
+The created event stream.
 

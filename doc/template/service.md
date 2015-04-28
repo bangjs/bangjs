@@ -5,28 +5,28 @@
 {%- endfor -%}
 )
 {%- endmacro -%}
+Module {$ doc.moduleDoc.id | link $} :boom:
 # Service `{$ doc.name $}`
-
-Lives in module {$ doc.moduleDoc.id | link $}.
 
 {$ doc.description $}
 
-
 {% for method in doc.methods -%}
-### Method `{$ doc.name $}.{$ functionSyntax(method) $}`
+## {$ doc.name $}.{$ functionSyntax(method) $}
+
+:octocat: [`{$ doc.fileInfo.projectRelativePath $}#L{$ doc.startingLine $}`](https://github.com/nouncy/bangjs/tree/master/{$ doc.fileInfo.projectRelativePath $}#L{$ doc.startingLine $})
 
 {$ method.description $}
 
 {% for param in method.params -%}
-##### Argument `{$ param.name $}`
+:baby_bottle: **{$ param.name $}** _{$ param.typeList | join('|') $}_
 
-_{$ param.typeList | join('|') $}_ — {$ param.description $}
+{$ param.description $}
 
 {% endfor %}
 {%- if method.returns -%}
-##### Returns
+:dash: **Returns** _{$ method.returns.typeList | join('|') $}_
 
-_{$ method.returns.typeList | join('|') $}_ — {$ method.returns.description $}
+{$ method.returns.description $}
 {% endif %}
 
 {%- endfor %}
