@@ -18,7 +18,7 @@
 ## {$ group.groupType|capitalize $} components
 
 {% for component in group.components -%}
-* `{$ component.id | link(component.name) $}`
+* {$ component.id | link $}
 {% endfor -%}
 {%- endif %}
 

@@ -10,5 +10,5 @@ It depends on [angular-testable-controller](https://github.com/nouncy/angular-te
 
 ## Service components
 
-* `[Bacon](Bacon.md)`
-* `[bang](bang.md)`
+* [`Bacon`](Bacon.md)
+* [`bang`](bang.md)

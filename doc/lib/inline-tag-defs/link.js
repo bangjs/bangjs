@@ -11,6 +11,13 @@ module.exports = function linkInlineTagDef (getLinkInfo, createDocMessage) {
 
 				var linkInfo = getLinkInfo(uri, title, doc);
 
+				// Work around `getLinkInfo`'s false assumption that output
+				// format is always HTML.
+				linkInfo.title = linkInfo.title.
+					replace(/^<code>(.*)<\/code>$/g, function (original, stripped) {
+						return "`" + stripped + "`";
+					});
+
 				if (!linkInfo.valid)
 					throw new Error(createDocMessage(linkInfo.error, doc));
 
