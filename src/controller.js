@@ -1,7 +1,9 @@
 ;!function (bang, angular, atc, Bacon) {
 
-bang.controller = function (ctrlName, fieldDefs) {
-	return atc(ctrlName, fieldDefs, function (scope, fields) {
+bang.controller = function (ctrlName) {
+	var fieldDefs = [].slice.call(arguments, 1);
+
+	return atc.apply(this, [ctrlName].concat(fieldDefs).concat([function (scope, fields) {
 
 		angular.forEach(fields, function (field) {
 			// TODO: Listen for errors and log those when in debug mode.
@@ -14,7 +16,8 @@ bang.controller = function (ctrlName, fieldDefs) {
 				value.subscribe(angular.noop);
 		});
 
-	});
+	}]));
+
 };
 
 }(window.bang, window.angular, window.atc, window.Bacon);

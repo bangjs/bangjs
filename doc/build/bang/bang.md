@@ -43,7 +43,7 @@ Stream binder function
   that can be called to issue a next event with given value. Its second
   argument is a function that can be called to end the stream.
 
-:dash: **Returns** _Bacon.EventStream_
+:dash: _Bacon.EventStream_
 
-The created event stream.
+Returns the created event stream.
 

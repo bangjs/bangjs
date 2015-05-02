@@ -8,6 +8,8 @@ bang.property = function (fn) {
 	};
 	init.$inject = injector.annotate(fn);
 
+	// TODO: I think a property can always do `.skipDuplicates()`.
+
 	return bang.property.chain(init);
 };
 

@@ -2,7 +2,12 @@
 
 global.ani = function (name, definition) {
 	var obj = {};
-	obj[name] = function (nsInjector) {
+	obj[name] = global.ani.wrap(name.split('.').slice(0, -1).join('.'), definition);
+	return obj;
+};
+
+global.ani.wrap = function (base, definition) {
+	var wrapper = function (nsInjector) {
 		// This is not a watertight condition, because when using
 		// `$injector.invoke` directly one could pass in an empty object as its
 		// `self` argument and we would be drawing incorrect conclusions. But we
@@ -11,18 +16,18 @@ global.ani = function (name, definition) {
 		// indirectly through `$provide` or similar, and those will never pass
 		// an empty object as `self`.
 		if (this && typeof this === 'object' && Object.keys(this).length === 0)
-			return nsInjector.instantiate(name, definition);
+			return nsInjector.instantiate(base, definition);
 
-		return nsInjector.invoke(name, definition, this);
+		return nsInjector.invoke(base, definition, this);
 	};
-	obj[name].$inject = ['nsInjector'];
-	return obj;
+	wrapper.$inject = ['nsInjector'];
+	return wrapper;
 };
 
 angular.module('ani', []).factory('nsInjector', ['$injector', '$parse', function ($injector, $parse) {
 
-	function wrapNamespaced (path, namespaced) {
-		var base = path.split('.').slice(0, -1);
+	function wrapNamespaced (base, namespaced) {
+		base = base.split('.');
 
 		// Normalize annotation style.
 		if (!angular.isFunction(namespaced)) {
@@ -46,9 +51,9 @@ angular.module('ani', []).factory('nsInjector', ['$injector', '$parse', function
 				dep = dep.split('.');
 				if (base.length > 0 && angular.equals(dep.slice(0, base.length), base)) {
 					var relativePath = dep.slice(base.length).join('.');
-					// Enable `bundle['.nested.service']`
+					// Enable `bundle['.nested.service']`.
 					bundle['.' + relativePath] = injectable;
-					// Enable `bundle.nested.service`
+					// Enable `bundle.nested.service`.
 					$parse(relativePath).assign(bundle, injectable);
 				}
 
@@ -68,15 +73,15 @@ angular.module('ani', []).factory('nsInjector', ['$injector', '$parse', function
 	}
 
 	return {
-		invoke: function (path, namespacedFn, self, locals) {
+		invoke: function (base, namespacedFn, self, locals) {
 			return $injector.invoke(
-				wrapNamespaced(path, namespacedFn),
+				wrapNamespaced(base, namespacedFn),
 				self, locals
 			);
 		},
-		instantiate: function (path, namespacedType, locals) {
+		instantiate: function (base, namespacedType, locals) {
 			return $injector.instantiate(
-				wrapNamespaced(path, namespacedType),
+				wrapNamespaced(base, namespacedType),
 				self, locals
 			);
 		}
@@ -108,9 +113,17 @@ function unnestKeys (obj, path) {
 	return flat;
 }
 
-global.atc = function (ctrlName, fieldDefs, onInstantiate) {
-	// TODO: Support multiple `fieldDefs` arguments.
-	fieldDefs = unnestKeys(fieldDefs);
+global.atc = function (ctrlName) {
+	var fieldDefs, onInstantiate;
+
+	if (angular.isFunction(arguments[arguments.length - 1])) {
+		fieldDefs = [].slice.call(arguments, 1, arguments.length - 1);
+		onInstantiate = arguments[arguments.length - 1];
+	} else {
+		fieldDefs = [].slice.call(arguments, 1);
+	}
+
+	fieldDefs = unnestKeys(angular.extend.apply(angular, [{}].concat(fieldDefs)));
 
 	return ['$provide', '$controllerProvider', function ($provide, $controllerProvider) {
 
@@ -127,10 +140,10 @@ global.atc = function (ctrlName, fieldDefs, onInstantiate) {
 			fieldDef.$inject = fieldDef.$inject || [];
 
 			// Register service for this field.
-			$provide.factory(ani(
-				makeName(ctrlName, fieldName),
+			$provide.factory(makeName(ctrlName, fieldName), ani.wrap(
+				ctrlName,
 				fieldDef.$inject.concat([function (deps) {
-					return new atc.Field(fieldName, fieldDef, deps);
+					return new global.atc.Field(fieldName, fieldDef, deps);
 				}])
 			));
 
@@ -250,7 +263,7 @@ run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $locatio
 	 *   that describes its incoming events. Its first argument is a function
 	 *   that can be called to issue a next event with given value. Its second
 	 *   argument is a function that can be called to end the stream.
-	 * @returns {Bacon.EventStream} The created event stream.
+	 * @returns {Bacon.EventStream} Returns the created event stream.
 	 */
 	svc.createScopeStream = function (scope, subscribe) {
 		return Bacon.fromBinder(function (sink) {
@@ -430,8 +443,10 @@ config(['$provide', function ($provide) {
 }(window.bang, window.angular, window.Bacon);
 ;!function (bang, angular, atc, Bacon) {
 
-bang.controller = function (ctrlName, fieldDefs) {
-	return atc(ctrlName, fieldDefs, function (scope, fields) {
+bang.controller = function (ctrlName) {
+	var fieldDefs = [].slice.call(arguments, 1);
+
+	return atc.apply(this, [ctrlName].concat(fieldDefs).concat([function (scope, fields) {
 
 		angular.forEach(fields, function (field) {
 			// TODO: Listen for errors and log those when in debug mode.
@@ -446,7 +461,8 @@ bang.controller = function (ctrlName, fieldDefs) {
 				});
 		});
 
-	});
+	}]));
+
 };
 
 }(window.bang, window.angular, window.atc, window.Bacon);
@@ -459,6 +475,8 @@ bang.property = function (fn) {
 		return (angular.isArray(fn) ? fn[fn.length - 1] : fn).call(this, value);
 	};
 	init.$inject = injector.annotate(fn);
+
+	// TODO: I think a property can always do `.skipDuplicates()`.
 
 	return bang.property.chain(init);
 };

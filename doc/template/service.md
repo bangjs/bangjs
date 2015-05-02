@@ -24,7 +24,7 @@ Module {$ doc.moduleDoc.id | link $} :boom:
 
 {% endfor %}
 {%- if method.returns -%}
-:dash: **Returns** _{$ method.returns.typeList | join('|') $}_
+:dash: _{$ method.returns.typeList | join('|') $}_
 
 {$ method.returns.description $}
 {% endif %}

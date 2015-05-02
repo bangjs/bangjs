@@ -48,7 +48,7 @@ run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $locatio
 	 *   that describes its incoming events. Its first argument is a function
 	 *   that can be called to issue a next event with given value. Its second
 	 *   argument is a function that can be called to end the stream.
-	 * @returns {Bacon.EventStream} The created event stream.
+	 * @returns {Bacon.EventStream} Returns the created event stream.
 	 */
 	svc.createScopeStream = function (scope, subscribe) {
 		return Bacon.fromBinder(function (sink) {
