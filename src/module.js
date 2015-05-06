@@ -124,12 +124,14 @@ run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $locatio
 	svc.functionAsStream = function (scope, name) {
 		sendToStreams[name] = sendToStreams[name] || [];
 
-		scope[name] = scope[name] || function () {
-			var args = [].slice.call(arguments);
-			sendToStreams[name].forEach(function (send) {
-				send(args);
+		var parsed = $parse(name);
+		if (!angular.isFunction(parsed(scope)))
+			parsed.assign(scope, function () {
+				var args = [].slice.call(arguments);
+				sendToStreams[name].forEach(function (send) {
+					send(args);
+				});
 			});
-		};
 
 		return svc.createScopeStream(scope, function (next) {
 

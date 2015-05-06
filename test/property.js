@@ -57,7 +57,7 @@ describe("bang.property", function () {
 			}
 
 		}, function (scope, fields) {
-			fields[0].onValue(function (value) {
+			fields.a.onValue(function (value) {
 				expect(value).to.equal(2 * 2 + 3);
 
 				done();
@@ -79,7 +79,7 @@ describe("bang.property", function () {
 			}])
 
 		}, function (scope, fields) {
-			fields[0].onValue(function (value) {
+			fields.a.onValue(function (value) {
 				expect(value).to.equal(2);
 
 				done();
@@ -140,7 +140,7 @@ describe("bang.property", function () {
 
 		}, function (scope, fields) {
 
-			fields[0].onValue(function (value) {
+			fields.a.onValue(function (value) {
 				expect(scope.a).to.equal(value);
 
 				done();

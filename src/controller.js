@@ -1,9 +1,8 @@
 ;!function (bang, angular, atc, Bacon) {
 
-bang.controller = function (ctrlName) {
-	var fieldDefs = [].slice.call(arguments, 1);
+bang.controller = function () {
 
-	return atc.apply(this, [ctrlName].concat(fieldDefs).concat([function (scope, fields) {
+	return atc.apply(this, [].slice.call(arguments).concat([function (scope, fields) {
 
 		angular.forEach(fields, function (field) {
 			// TODO: Listen for errors and log those when in debug mode.

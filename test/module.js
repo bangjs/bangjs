@@ -222,6 +222,16 @@ describe("angular.module('bang')", function () {
 
 		});
 
+		it("understands nested names", function () {
+
+			var scope = $rootScope.$new();
+
+			bang.functionAsStream(scope, 'ns.fn');
+
+			expect(scope.ns.fn).to.be.a.function;
+			
+		});
+
 		it("delivers an event for every function call", function () {
 
 			var scope = $rootScope.$new();

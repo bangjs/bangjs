@@ -137,6 +137,17 @@ function unnestKeys (obj, path) {
 	return flat;
 }
 
+function flattenArray (array) {
+	var flat = [];
+	array.forEach(function (item) {
+		if (angular.isArray(item))
+			flat.push.apply(flat, flattenArray(item));
+		else
+			flat.push(item);
+	});
+	return flat;
+}
+
 global.atc = function (ctrlName) {
 	var fieldDefs, onInstantiate;
 
@@ -147,9 +158,11 @@ global.atc = function (ctrlName) {
 		fieldDefs = [].slice.call(arguments, 1);
 	}
 
-	fieldDefs = angular.extend.apply(angular, [{}].concat(fieldDefs.map(function (fieldDef) {
-		return unnestKeys(fieldDef);
-	})));
+	fieldDefs = angular.extend.apply(angular, [{}].concat(
+		flattenArray(fieldDefs).map(function (fieldDef) {
+			return unnestKeys(fieldDef);
+		})
+	));
 
 	return ['$provide', '$controllerProvider', function ($provide, $controllerProvider) {
 
@@ -181,9 +194,10 @@ global.atc = function (ctrlName) {
 
 			// Create instances of all fields in the context of this controller
 			// instance, effectively starts running this controller's behavior.
-			fields = fields.map(function (field) {
-				return field.instance($scope);
-			});
+			fields = fields.reduce(function (obj, field) {
+				obj[field.name] = field.instance($scope);
+				return obj;
+			}, {});
 
 			if (angular.isFunction(onInstantiate))
 				onInstantiate($scope, fields);
@@ -370,12 +384,14 @@ run(['$rootScope', '$parse', '$location', function ($rootScope, $parse, $locatio
 	svc.functionAsStream = function (scope, name) {
 		sendToStreams[name] = sendToStreams[name] || [];
 
-		scope[name] = scope[name] || function () {
-			var args = [].slice.call(arguments);
-			sendToStreams[name].forEach(function (send) {
-				send(args);
+		var parsed = $parse(name);
+		if (!angular.isFunction(parsed(scope)))
+			parsed.assign(scope, function () {
+				var args = [].slice.call(arguments);
+				sendToStreams[name].forEach(function (send) {
+					send(args);
+				});
 			});
-		};
 
 		return svc.createScopeStream(scope, function (next) {
 
@@ -474,10 +490,9 @@ config(['$provide', function ($provide) {
 }(window.bang, window.angular, window.Bacon);
 ;!function (bang, angular, atc, Bacon) {
 
-bang.controller = function (ctrlName) {
-	var fieldDefs = [].slice.call(arguments, 1);
+bang.controller = function () {
 
-	return atc.apply(this, [ctrlName].concat(fieldDefs).concat([function (scope, fields) {
+	return atc.apply(this, [].slice.call(arguments).concat([function (scope, fields) {
 
 		angular.forEach(fields, function (field) {
 			// TODO: Listen for errors and log those when in debug mode.
@@ -486,9 +501,7 @@ bang.controller = function (ctrlName) {
 			// block here and there. For example, the fact that `.doAction`
 			// swallows exceptions is truly messed up.
 			if (field instanceof Bacon.Observable)
-				field.subscribe(function (v) {
-					// console.log(field.name, v);
-				});
+				field.subscribe(angular.noop);
 		});
 
 	}]));
