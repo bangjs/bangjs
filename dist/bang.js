@@ -1,13 +1,15 @@
 ;!function (global, angular) {
 
-global.ani = function (name, definition) {
-	var obj = {};
-	obj[name] = global.ani.wrap(name.split('.').slice(0, -1).join('.'), definition);
-	return obj;
-};
-
-global.ani.wrap = function (base, definition) {
-	var wrapper = function (nsInjector) {
+global.ani = function (base, definition) {
+	if (arguments.length === 1) {
+		definition = base;
+		base = '';
+	}
+	
+	// TODO: Any approach that uses `locals` (such as `$controller`) will choke
+	// on the fact that we do not copy all dependencies from `definition` onto
+	// this wrapper.
+	return ['nsInjector', function (nsInjector) {
 		// This is not a watertight condition, because when using
 		// `$injector.invoke` directly one could pass in an empty object as its
 		// `self` argument and we would be drawing incorrect conclusions. But we
@@ -19,85 +21,107 @@ global.ani.wrap = function (base, definition) {
 			return nsInjector.instantiate(base, definition);
 
 		return nsInjector.invoke(base, definition, this);
-	};
-	wrapper.$inject = ['nsInjector'];
-	return wrapper;
+	}];
 };
 
-angular.module('ani', []).factory('nsInjector', ['$injector', '$parse', function ($injector, $parse) {
+angular.module('ani', []).provider('nsInjector', function () {
 
-	function wrapNamespaced (base, namespaced) {
-		base = base.split('.');
-
-		// Normalize annotation style.
-		if (!angular.isFunction(namespaced)) {
-			var inject = namespaced.slice(0, -1);
-			namespaced = namespaced[namespaced.length - 1];
-			namespaced.$inject = inject;
-		}
-		// TODO: Support implicit annotations?
-		namespaced.$inject = namespaced.$inject || [];
-
-		// Wrap namespaced definition to adapt it to `$injector`.
-		function regular () {
-			var injectables = [].slice.call(arguments);
-
-			// Invoke namespaced definition with bundled injectables.
-			return namespaced.call(this, regular.$inject.reduce(function (bundle, dep, i) {
-				var injectable = injectables[i];
-
-				bundle[dep] = injectable;
-
-				dep = dep.split('.');
-				if (base.length > 0 && angular.equals(dep.slice(0, base.length), base)) {
-					var relativePath = dep.slice(base.length).join('.');
-					// Enable `bundle['.nested.service']`.
-					bundle['.' + relativePath] = injectable;
-					// Enable `bundle.nested.service`.
-					$parse(relativePath).assign(bundle, injectable);
-				}
-
-				return bundle;
-			}, {}));
-		}
-
-		// Normalize dependencies.
-		regular.$inject = namespaced.$inject.reduce(function (normalized, dep) {
-			if (dep.charAt(0) === '.')
-				dep = base.join('.') + dep;
-			normalized.push(dep);
-			return normalized;
-		}, []);
-
-		return regular;
-	}
-
-	return {
-		invoke: function (base, namespacedFn, self, locals) {
-			return $injector.invoke(
-				wrapNamespaced(base, namespacedFn),
-				self, locals
-			);
-		},
-		instantiate: function (base, namespacedType, locals) {
-			return $injector.instantiate(
-				wrapNamespaced(base, namespacedType),
-				self, locals
-			);
-		}
+	var childOperator = '.';
+	this.setChildOperator = function (str) {
+		childOperator = str;
+		return this;
 	};
 
-}]);
+	this.$get = ['$injector', '$parse', function ($injector, $parse) {
+
+		function wrapNamespaced (base, namespaced) {
+			base = base.split(childOperator);
+
+			// Normalize annotation style.
+			if (!angular.isFunction(namespaced)) {
+				var inject = namespaced.slice(0, -1);
+				namespaced = namespaced[namespaced.length - 1];
+				namespaced.$inject = inject;
+			}
+			// TODO: Support implicit annotations?
+			namespaced.$inject = namespaced.$inject || [];
+
+			// Wrap namespaced definition to adapt it to `$injector`.
+			function regular () {
+				var injectables = [].slice.call(arguments);
+
+				function bundle (mapping) {
+					mapping = mapping || angular.identity;
+
+					return regular.$inject.reduce(function (bundle, dep, i) {
+						var injectable = mapping(injectables[i]);
+
+						bundle[dep] = injectable;
+
+						dep = dep.split(childOperator);
+						if (base.length > 0 && angular.equals(dep.slice(0, base.length), base)) {
+							var relativePath = dep.slice(base.length).join(childOperator);
+							// Enable `bundle['.nested.service']`.
+							bundle[childOperator + relativePath] = injectable;
+							// Enable `bundle.nested.service`, in other words
+							// try to regard `nested.service` as an assignable
+							// expression.
+							try {
+								$parse(relativePath).assign(bundle, injectable);
+							} catch (err) {}
+						}
+
+						return bundle;
+					}, {});
+				}
+
+				// Invoke namespaced definition with bundled injectables.
+				return namespaced.call(this, bundle(), bundle);
+			}
+
+			// Normalize dependencies.
+			regular.$inject = namespaced.$inject.reduce(function (normalized, dep) {
+				if (dep.charAt(0) === childOperator)
+					dep = base.join(childOperator) + dep;
+				normalized.push(dep);
+				return normalized;
+			}, []);
+
+			return regular;
+		}
+
+		return {
+			invoke: function (base, namespacedFn, self, locals) {
+				return $injector.invoke(
+					wrapNamespaced(base, namespacedFn),
+					self, locals
+				);
+			},
+			instantiate: function (base, namespacedType, locals) {
+				return $injector.instantiate(
+					wrapNamespaced(base, namespacedType),
+					self, locals
+				);
+			}
+		};
+
+	}];
+
+});
 
 }(window, window.angular);
 ;!function (global, angular, ani) {
 
-angular.module('atc', ['ani']);
+var CHILD_OPERATOR = '.';
 
-var CHILD_SEPARATOR = '.';
+angular.module('atc', ['ani']).config(['nsInjectorProvider', function (nsInjectorProvider) {
+
+	nsInjectorProvider.setChildOperator(CHILD_OPERATOR);
+
+}]);
 
 function makeName (ctrlName, fieldName) {
-	return [ctrlName, fieldName].join(CHILD_SEPARATOR);
+	return [ctrlName, fieldName].join(CHILD_OPERATOR);
 }
 
 function unnestKeys (obj, path) {
@@ -106,7 +130,7 @@ function unnestKeys (obj, path) {
 	angular.forEach(obj, function (value, key) {
 		var thisPath = path.concat([key]);
 		if (angular.isArray(value) || angular.isFunction(value))
-			flat[thisPath.join(CHILD_SEPARATOR)] = value;
+			flat[thisPath.join(CHILD_OPERATOR)] = value;
 		else
 			angular.extend(flat, unnestKeys(value, thisPath));
 	});
@@ -123,7 +147,9 @@ global.atc = function (ctrlName) {
 		fieldDefs = [].slice.call(arguments, 1);
 	}
 
-	fieldDefs = unnestKeys(angular.extend.apply(angular, [{}].concat(fieldDefs)));
+	fieldDefs = angular.extend.apply(angular, [{}].concat(fieldDefs.map(function (fieldDef) {
+		return unnestKeys(fieldDef);
+	})));
 
 	return ['$provide', '$controllerProvider', function ($provide, $controllerProvider) {
 
@@ -140,10 +166,10 @@ global.atc = function (ctrlName) {
 			fieldDef.$inject = fieldDef.$inject || [];
 
 			// Register service for this field.
-			$provide.factory(makeName(ctrlName, fieldName), ani.wrap(
+			$provide.factory(makeName(ctrlName, fieldName), ani(
 				ctrlName,
-				fieldDef.$inject.concat([function (deps) {
-					return new global.atc.Field(fieldName, fieldDef, deps);
+				fieldDef.$inject.concat([function (deps, generateDeps) {
+					return new global.atc.Field(fieldName, fieldDef, generateDeps);
 				}])
 			));
 
@@ -155,15 +181,16 @@ global.atc = function (ctrlName) {
 
 			// Create instances of all fields in the context of this controller
 			// instance, effectively starts running this controller's behavior.
-			angular.forEach(fields, function (field) {
-				field.instance($scope);
+			fields = fields.map(function (field) {
+				return field.instance($scope);
 			});
 
 			if (angular.isFunction(onInstantiate))
 				onInstantiate($scope, fields);
 		}
 
-		// TODO: Use `ani()` here as soon as it supports "child operator".
+		// TODO: Use `ani()` here as soon as it supports controllers and
+		// "child operator".
 		ctor.$inject = ['$scope'].concat(Object.keys(fieldDefs).map(function (fieldName) {
 			return makeName(ctrlName, fieldName);
 		}));
@@ -174,7 +201,7 @@ global.atc = function (ctrlName) {
 
 };
 
-global.atc.Field = function Field (name, fieldDef, deps) {
+global.atc.Field = function Field (name, fieldDef, generateDeps) {
 
 	var instances = {};
 	this.instance = function (scope) {
@@ -189,7 +216,11 @@ global.atc.Field = function Field (name, fieldDef, deps) {
 			// scope.
 			if (scope)
 				context.$scope = scope;
-			instances[key] = fieldDef.call(context, deps);
+			instances[key] = fieldDef.call(context, generateDeps(function (value) {
+				if (value instanceof global.atc.Field)
+					return value.instance(scope);
+				return value;
+			}), generateDeps);
 		}
 
 		return instances[key];
@@ -454,9 +485,8 @@ bang.controller = function (ctrlName) {
 			// what is swallowed and when, as we may also want a try catch
 			// block here and there. For example, the fact that `.doAction`
 			// swallows exceptions is truly messed up.
-			var value = field.instance(scope);
-			if (value instanceof Bacon.Observable)
-				value.subscribe(function (v) {
+			if (field instanceof Bacon.Observable)
+				field.subscribe(function (v) {
 					// console.log(field.name, v);
 				});
 		});
@@ -490,11 +520,6 @@ bang.property.chain = function (fn, makeLast) {
 	if (this === bang.property) {
 		env = function (deps) {
 			var context = this;
-
-			angular.forEach(deps, function (dep, key) {
-				if (dep instanceof atc.Field)
-					deps[key] = dep.instance(context.$scope);
-			});
 
 			env.run.concat(env.runLast).forEach(function (fn) {
 				var result = fn.call(deps, context, env.value);

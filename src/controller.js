@@ -11,9 +11,8 @@ bang.controller = function (ctrlName) {
 			// what is swallowed and when, as we may also want a try catch
 			// block here and there. For example, the fact that `.doAction`
 			// swallows exceptions is truly messed up.
-			var value = field.instance(scope);
-			if (value instanceof Bacon.Observable)
-				value.subscribe(angular.noop);
+			if (field instanceof Bacon.Observable)
+				field.subscribe(angular.noop);
 		});
 
 	}]));

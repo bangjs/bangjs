@@ -23,11 +23,6 @@ bang.property.chain = function (fn, makeLast) {
 		env = function (deps) {
 			var context = this;
 
-			angular.forEach(deps, function (dep, key) {
-				if (dep instanceof atc.Field)
-					deps[key] = dep.instance(context.$scope);
-			});
-
 			env.run.concat(env.runLast).forEach(function (fn) {
 				var result = fn.call(deps, context, env.value);
 				if (result !== undefined)
