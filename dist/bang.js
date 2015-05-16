@@ -102,7 +102,7 @@ Context in which stream should operate.
 
 @param {function(next, end)} subscribe
 Binder function that initializes the events that will be passed along the
-stream.
+stream. Receives provided `scope` as `this`.
 - Invoke `next(value)` to issue a next event with given value.
 - Invoke `end()` to end the stream.
 
@@ -185,11 +185,11 @@ Context in which property should operate.
 
 @param {function()} getValue
 Function that will be called every time the property needs to know its current
-value.
+value. Receives provided `scope` as `this`.
 
 @param {function(next, invalidate, end)} subscribe
 Binder function that initializes the events that will be passed along the
-property stream.
+property stream. Receives provided `scope` as `this`.
 - Invoke `next(value)` to issue a next event with given value.
 - Invoke `invalidate()` to issue a next event with value as provided by
   `getValue()`.
@@ -450,19 +450,56 @@ config(['$provide', function ($provide) {
 angular.module('bang').
 
 /**
- * @ngdoc service
- * @name bang.location
- * @module bang
- * @requires $location
- * @description
- * Exposes helper functions to integrate with `$location`.
- */
+@ngdoc service
+@name bang.location
+@module bang
+@description
+
+Exposes helper functions to integrate Bacon.js observables with `$location`.
+*/
 service('bang.location', ['$location', function ($location) {
 
-	/**
-	 * @ngdoc method
-	 * @name module:bang.service:bang.location#asProperty
-	 */
+/**
+@ngdoc method
+@name module:bang.service:bang.location#asProperty
+@description
+
+Watches a value from `$location` and makes it available as a property.
+
+This method is also available on `$location` under the same name.
+
+```js
+var isLoggedIn = false;
+
+var path = $location.asProperty(function () {
+	return this.path();
+}).doAction(function (value) {
+	if (isLoggedIn) return;
+
+	$scope.$apply(function () {
+		$location.path('/login').replace();
+	});
+});
+
+$scope.$apply(function () {
+	$location.path('/home').replace();
+});
+
+path.onValue(function (value) {
+	console.log(value);
+});
+
+// → "/home"
+// → "/login"
+```
+
+@param {function()} getValue
+Function that will be called every time the property needs to know its current
+value. Receives `$location` as `this`.
+
+@returns {Bacon.Property}
+Returns the created property.
+*/
 	this.asProperty = function (getValue) {
 		return $location.asProperty(getValue);
 	};
@@ -500,14 +537,13 @@ config(['$provide', function ($provide) {
 angular.module('bang').
 
 /**
- * @ngdoc service
- * @name bang.controller
- * @module bang
- * @requires $parse
- * @requires Bacon
- * @description
- * Exposes tools to facilitate in building controllers.
- */
+@ngdoc service
+@name bang.controller
+@module bang
+@description
+
+Exposes tools to build controllers.
+*/
 service('bang.controller', ['$parse', 'Bacon', function ($parse, Bacon) {
 
 	/**

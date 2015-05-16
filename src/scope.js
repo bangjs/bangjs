@@ -48,7 +48,7 @@ Context in which stream should operate.
 
 @param {function(next, end)} subscribe
 Binder function that initializes the events that will be passed along the
-stream.
+stream. Receives provided `scope` as `this`.
 - Invoke `next(value)` to issue a next event with given value.
 - Invoke `end()` to end the stream.
 
@@ -131,11 +131,11 @@ Context in which property should operate.
 
 @param {function()} getValue
 Function that will be called every time the property needs to know its current
-value.
+value. Receives provided `scope` as `this`.
 
 @param {function(next, invalidate, end)} subscribe
 Binder function that initializes the events that will be passed along the
-property stream.
+property stream. Receives provided `scope` as `this`.
 - Invoke `next(value)` to issue a next event with given value.
 - Invoke `invalidate()` to issue a next event with value as provided by
   `getValue()`.
