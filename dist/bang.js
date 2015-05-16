@@ -71,9 +71,13 @@ service('bang.scope', ['$parse', 'Bacon', function ($parse, Bacon) {
 	 * @ngdoc method
 	 * @name module:bang.service:bang.scope#createStream
 	 * @description
+	 * 
 	 * Creates a stream that automatically ends when provided scope is
 	 * destroyed.
 	 *
+	 * This method is also available on `$rootScope` under the same name, minus
+	 * the `scope` parameter.
+	 * 
 	 * ```js
 	 * angular.module('myModule').controller(['$scope', function ($scope) {
 	 * 	 
@@ -85,12 +89,22 @@ service('bang.scope', ['$parse', 'Bacon', function ($parse, Bacon) {
 	 *     }, 2000);
 	 *   });
 	 *   
+	 *   stream.subscribe(function (event) {
+	 *     console.log(event.constructor.name, event.isEnd() || event.value());
+	 *   });
+	 *   
+	 *   // → "Next" 1
+	 *   // → <2 second delay>
+	 *   // → "Next" 2
+	 *   // → "End" true
+	 *   
 	 * }]);
 	 * ```
-	 * @param {$rootScope.Scope} scope Context in which stream should operate.
-	 * @param {function(Function, Function)} subscribe Stream binder function
-	 *   that describes its incoming events. Its first argument is a function
-	 *   that can be called to issue a next event with given value. Its second
+	 * 
+	 * @param {$rootScope.Scope} scope - Context in which stream should operate.
+	 * @param {function(Function, Function)} subscribe - Binder function that
+	 *   describes its incoming events. Its first argument is a function that
+	 *   can be called to issue a next event with given value. Its second
 	 *   argument is a function that can be called to end the stream.
 	 * @returns {Bacon.EventStream} Returns the created event stream.
 	 */
@@ -126,6 +140,60 @@ service('bang.scope', ['$parse', 'Bacon', function ($parse, Bacon) {
 	/**
 	 * @ngdoc method
 	 * @name module:bang.service:bang.scope#createProperty
+	 * @description
+	 *
+	 * Creates a property with an initial value that accounts for laziness of
+	 * the property. In other words; the initial value is not generated as long
+	 * as the property is not subscribed to.
+	 *
+	 * Resulting property automatically ends when provided scope is destroyed.
+	 *
+	 * This method is also available on `$rootScope` under the same name, minus
+	 * the `scope` parameter.
+	 *
+	 * ```js
+	 * angular.module('myModule').controller(['$scope', '$document', function ($scope, $document) {
+	 * 	 
+	 *   // `$document.title` has some value other than `"Initial title"` here.
+	 *
+	 *   var property = $scope.createProperty(function () {
+	 *     return $document.title;
+	 *   }, function (next, invalidate, end) {
+	 *     next("Fake title");
+	 *     setTimeout(function () {
+	 *       invalidate();
+	 *       end();
+	 *     }, 2000);
+	 *   });
+	 *
+	 *   $document.title = "Initial title";
+	 *
+	 *   property.subscribe(function (event) {
+	 *     console.log(event.constructor.name, event.isEnd() || event.value());
+	 *
+	 *     $document.title = "Changed title";
+	 *   });
+	 *
+	 *   // → "Initial" "Initial title"
+	 *   // → "Next" "Fake title"
+	 *   // → <2 second delay>
+	 *   // → "Next" "Changed title"
+	 *   // → "End" true
+	 *   
+	 * }]);
+	 * ```
+	 * 
+	 * @param {$rootScope.Scope} scope - Context in which property should
+	 *   operate.
+	 * @param {Function} getValue - Function that will be called every time the
+	 *   property needs to know its current value.
+	 * @param {function(Function, Function, Function)} subscribe - Binder
+	 *   function that describes its incoming events. Its first argument is a
+	 *   function that can be called to issue a next event with given value. Its
+	 *   second argument is a function that can be called to issue a next event
+	 *   with value as provided by `getValue`. Its third argument is a function
+	 *   that can be called to end the stream.
+	 * @returns {Bacon.Property} Returns the created property.
 	 */
 	this.createProperty = function (scope, getValue, subscribe) {
 		var initial;
@@ -151,7 +219,12 @@ service('bang.scope', ['$parse', 'Bacon', function ($parse, Bacon) {
 				// an invalidate.
 				sinkNext();
 			}, end);
-		}).toProperty(getInitialValue).map(function (value) {
+		}).
+		// Set initial value placeholder, to be replaced by actual value as soon
+		// as the property is activated (subscribed to). Inspired on [this idea]
+		// (https://github.com/baconjs/bacon.js/issues/536#issuecomment-
+		// 75656100).
+		toProperty(getInitialValue).map(function (value) {
 			return value === getInitialValue ? getInitialValue() : value;
 		});
 	};
