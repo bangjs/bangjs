@@ -5,6 +5,13 @@ Exposes helper functions to integrate Bacon.js observables with AngularJS
 scopes.
 
 
+* [`createStream`](#createstreamscope-subscribe)
+* [`createProperty`](#createpropertyscope-getvalue-subscribe)
+* [`watchAsProperty`](#watchaspropertyscope-expression)
+* [`functionAsStream`](#functionasstreamscope-expression)
+* [`digestObservable`](#digestobservablescope-expression-observable)
+
+
 ## createStream(scope, subscribe)
 
 :octocat: [`src/scope.js#L16`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L16)

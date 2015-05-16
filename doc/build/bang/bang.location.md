@@ -4,6 +4,9 @@ Module [`bang`](index.md) :boom:
 Exposes helper functions to integrate with `$location`.
 
 
+* [`asProperty`](#asproperty)
+
+
 ## asProperty()
 
 :octocat: [`src/location.js#L15`](https://github.com/nouncy/bangjs/tree/master/src/location.js#L15)

@@ -4,6 +4,13 @@ Module [`bang`](index.md) :boom:
 Exposes tools to facilitate in building controllers.
 
 
+* [`create`](#create)
+* [`stream`](#stream)
+* [`stream.calls`](#streamcalls)
+* [`property`](#property)
+* [`property.watch`](#propertywatch)
+
+
 ## create()
 
 :octocat: [`src/controller.js#L16`](https://github.com/nouncy/bangjs/tree/master/src/controller.js#L16)

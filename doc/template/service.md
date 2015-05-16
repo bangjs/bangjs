@@ -5,10 +5,20 @@
 {%- endfor -%}
 )
 {%- endmacro -%}
+{%- macro githubAnchor(method) -%}
+#{$ method.name | lower | replace('.', '') $}
+{%- for param in method.params -%}
+	{$ param.name | lower $}{% if not loop.last %}-{% endif %}
+{%- endfor -%}
+{%- endmacro -%}
 Module {$ doc.moduleDoc.id | link $} :boom:
 # Service `{$ doc.name $}`
 
 {$ doc.description $}
+
+{% for method in doc.methods %}
+* [`{$ method.name $}`]({$ githubAnchor(method) $})
+{%- endfor %}
 
 {% for method in doc.methods %}
 ## {$ functionSyntax(method) $}
