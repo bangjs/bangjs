@@ -6,11 +6,11 @@ var gulp = require('gulp'),
 gulp.task('js', function () {
 
 	return gulp.src([
-		'bower_components/angular-testable-controller/dist/atc.js',
 		'src/core.js',
-		'src/module.js',
-		'src/controller.js',
-		'src/property.js'
+		'src/bacon.js',
+		'src/scope.js',
+		'src/location.js',
+		'src/controller.js'
 	]).pipe(
 		gulpConcat('bang.js')
 	).pipe(

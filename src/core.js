@@ -1,5 +1,11 @@
-;!function (global) {
+;!function (angular) { 'use strict';
 
-global.bang = {};
+/**
+ * @ngdoc module
+ * @name bang
+ * @description
+ * The main module.
+ */
+angular.module('bang', []);
 
-}(window);
+}(window.angular);

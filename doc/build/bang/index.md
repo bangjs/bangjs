@@ -2,8 +2,6 @@
 
 The main module.
 
-It depends on [angular-testable-controller](https://github.com/nouncy/angular-testable-controller).
-
 
 
 
@@ -11,4 +9,4 @@ It depends on [angular-testable-controller](https://github.com/nouncy/angular-te
 ## Service components
 
 * [`Bacon`](Bacon.md)
-* [`bang`](bang.md)
+* [`bang.scope`](bang.scope.md)
