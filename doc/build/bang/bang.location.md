@@ -3,6 +3,7 @@ Module [`bang`](index.md) :boom:
 
 Exposes helper functions to integrate Bacon.js observables with `$location`.
 
+### Index
 
 * [`asProperty`](#aspropertygetvalue)
 

@@ -32,12 +32,13 @@ run(['$window', '$location', function ($window, $location) {
 }]).
 
 /**
- * @ngdoc service
- * @name Bacon
- * @module bang
- * @description
- * Exposes {@link https://baconjs.github.io/ Bacon.js} as a service.
- */
+@ngdoc service
+@name Bacon
+@module bang
+@description
+
+Exposes {@link https://baconjs.github.io/ Bacon.js} as a service.
+*/
 constant('Bacon', Bacon);
 
 }(window.angular, window.Bacon);

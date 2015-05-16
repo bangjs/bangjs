@@ -16,6 +16,7 @@ Module {$ doc.moduleDoc.id | link $} :boom:
 
 {$ doc.description $}
 
+### Index
 {% for method in doc.methods %}
 * [`{$ method.name $}`]({$ githubAnchor(method) $})
 {%- endfor %}
@@ -28,13 +29,13 @@ Module {$ doc.moduleDoc.id | link $} :boom:
 {$ method.description $}
 
 {% for param in method.params -%}
-:baby_bottle: **{$ param.name $}** _{$ param.typeList | join('|') $}_
+:baby_bottle: **{$ param.name $}** _{$ param.typeList | join('|') | escape $}_
 
 {$ param.description $}
 
 {% endfor %}
 {%- if method.returns -%}
-:dash: _{$ method.returns.typeList | join('|') $}_
+:dash: _{$ method.returns.typeList | join('|') | escape $}_
 
 {$ method.returns.description $}
 {% endif %}

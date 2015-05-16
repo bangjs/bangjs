@@ -40,7 +40,6 @@ stream.subscribe(function (event) {
 // → <2 second delay>
 // → "Next" 2
 // → "End" true
-
 ```
 
 @param {$rootScope.Scope} scope

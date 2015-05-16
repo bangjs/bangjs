@@ -1,6 +1,6 @@
 # Module `bang`
 
-The main module.
+The main BangJS module. Add this to your app module dependencies to get going.
 
 
 

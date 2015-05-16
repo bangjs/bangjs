@@ -3,6 +3,7 @@ Module [`bang`](index.md) :boom:
 
 Exposes [Bacon.js](https://baconjs.github.io/) as a service.
 
+### Index
 
 
 
