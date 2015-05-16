@@ -21,6 +21,8 @@ gulp.task('js', function () {
 
 gulp.task('doc', function () {
 
+	// TODO: Clean out previous build before generating new one.
+	
 	return new Dgeni([require('./dgeni.conf')]).generate();
 
 });

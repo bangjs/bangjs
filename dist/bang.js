@@ -247,6 +247,14 @@ config(['$provide', function ($provide) {
 
 angular.module('bang').
 
+/**
+ * @ngdoc service
+ * @name bang.location
+ * @module bang
+ * @requires $location
+ * @description
+ * Exposes helper functions to integrate with `$location`.
+ */
 service('bang.location', ['$location', function ($location) {
 
 	/**
@@ -289,6 +297,15 @@ config(['$provide', function ($provide) {
 
 angular.module('bang').
 
+/**
+ * @ngdoc service
+ * @name bang.controller
+ * @module bang
+ * @requires $parse
+ * @requires Bacon
+ * @description
+ * Exposes tools to facilitate in building controllers.
+ */
 service('bang.controller', ['$parse', 'Bacon', function ($parse, Bacon) {
 
 	/**

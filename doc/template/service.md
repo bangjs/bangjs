@@ -10,8 +10,8 @@ Module {$ doc.moduleDoc.id | link $} :boom:
 
 {$ doc.description $}
 
-{% for method in doc.methods -%}
-## {$ doc.name $}.{$ functionSyntax(method) $}
+{% for method in doc.methods %}
+## {$ functionSyntax(method) $}
 
 :octocat: [`{$ method.fileInfo.projectRelativePath $}#L{$ method.startingLine $}`](https://github.com/nouncy/bangjs/tree/master/{$ method.fileInfo.projectRelativePath $}#L{$ method.startingLine $})
 

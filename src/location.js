@@ -2,6 +2,14 @@
 
 angular.module('bang').
 
+/**
+ * @ngdoc service
+ * @name bang.location
+ * @module bang
+ * @requires $location
+ * @description
+ * Exposes helper functions to integrate with `$location`.
+ */
 service('bang.location', ['$location', function ($location) {
 
 	/**

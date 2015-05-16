@@ -3,7 +3,8 @@ Module [`bang`](index.md) :boom:
 
 Exposes helper functions to integrate with AngularJS scopes.
 
-## bang.scope.createStream(scope, subscribe)
+
+## createStream(scope, subscribe)
 
 :octocat: [`src/scope.js#L16`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L16)
 
@@ -38,25 +39,29 @@ Stream binder function
 :dash: _Bacon.EventStream_
 
 Returns the created event stream.
-## bang.scope.createProperty()
+
+## createProperty()
 
 :octocat: [`src/scope.js#L72`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L72)
 
 
 
-## bang.scope.watchAsProperty()
+
+## watchAsProperty()
 
 :octocat: [`src/scope.js#L105`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L105)
 
 
 
-## bang.scope.functionAsStream()
+
+## functionAsStream()
 
 :octocat: [`src/scope.js#L123`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L123)
 
 
 
-## bang.scope.digestObservable()
+
+## digestObservable()
 
 :octocat: [`src/scope.js#L151`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L151)
 
