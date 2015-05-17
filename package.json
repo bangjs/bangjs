@@ -8,7 +8,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nouncy/bangjs"
+    "url": "https://github.com/bangjs/bangjs"
   },
   "keywords": [
     "bacon",
@@ -21,9 +21,9 @@
   "author": "Tim Molendijk <npm@timmolendijk.nl>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/nouncy/bangjs/issues"
+    "url": "https://github.com/bangjs/bangjs/issues"
   },
-  "homepage": "https://github.com/nouncy/bangjs",
+  "homepage": "http://bangjs.org",
   "devDependencies": {
     "dgeni": "^0.4.1",
     "dgeni-packages": "^0.10.13",

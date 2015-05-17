@@ -15,12 +15,12 @@ The nature of user interfaces and front-end apps in general is inherently asynch
 * focus on your business logic instead of managing state;
 * keep your code maintainable and scalable due to inherent composability.
 
-No need to go all-in, no lock-ins. It's all pretty unpretentious, [go see for yourself](https://github.com/nouncy/bangjs/blob/master/doc/build/bang/bang.controller.md)!
+No need to go all-in, no lock-ins. It's all pretty unpretentious, [go see for yourself](https://github.com/bangjs/bangjs/blob/master/doc/build/bang/bang.controller.md)!
 
 ## Documentation
 
-* [Quick code sample](https://github.com/nouncy/bangjs/blob/master/doc/build/bang/bang.controller.md)
-* [Full API docs](https://github.com/nouncy/bangjs/blob/master/doc/build/bang/index.md)
+* [Quick code sample](https://github.com/bangjs/bangjs/blob/master/doc/build/bang/bang.controller.md)
+* [Full API docs](https://github.com/bangjs/bangjs/blob/master/doc/build/bang/index.md)
 
 ## License
 
