@@ -1,5 +1,5 @@
 {
-  "name": "bang",
+  "name": "bangjs",
   "description": "Bacon-flavored Angular",
   "main": "./dist/bang.js",
   "keywords": [
