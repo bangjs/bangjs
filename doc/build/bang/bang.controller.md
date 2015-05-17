@@ -15,7 +15,7 @@ function ($scope, $http, Bacon, ctrl) {
 	var collection = ctrl.create($scope, {
 
 		loggedInUser: ctrl.property(function () {
-			return Bacon.fromPromise($http.get('/me'));
+			return Bacon.fromPromise( $http.get('/me') );
 		}),
 
 		books: {
@@ -24,7 +24,7 @@ function ($scope, $http, Bacon, ctrl) {
 
 			all: ctrl.property(function () {
 				return this.books.search.flatMapLatest(function (query) {
-					return Bacon.fromPromise($http.get('/searchBooks', { q: query }));
+					return Bacon.fromPromise( $http.get('/searchBooks', { q: query }) );
 				});
 			})
 
@@ -64,7 +64,7 @@ function ($scope, $http, Bacon, ctrl) {
 				country: this.loggedInUser.map('.country'),
 				limit: 5
 			}).flatMapLatest(function (queryDeals) {
-				return Bacon.fromPromise($http.get('/searchDeals', queryDeals));
+				return Bacon.fromPromise( $http.get('/searchDeals', queryDeals) );
 			});
 		})
 
@@ -122,9 +122,9 @@ A corresponding view could look as follows:
 
 * [`create`](#createscope-factories)
 * [`stream`](#streaminit)
-* [`stream.calls`](#streamcalls)
-* [`property`](#property)
-* [`property.watch`](#propertywatch)
+* [`stream.calls`](#streamcallsarg)
+* [`property`](#propertyinit)
+* [`property.watch`](#propertywatchmerge)
 
 
 ## create(scope, factories)
@@ -144,11 +144,11 @@ specifically: the setup function as supplied upon factory construction will be
 invoked with said collection as `this`, and with corresponding field name and
 scope as arguments.
 
-:baby_bottle: **scope** _$rootScope.Scope_
+:baby_bottle:  **scope** _$rootScope.Scope_
 
 Scope to which the defined observables should be connected.
 
-:baby_bottle: **factories** _Object.&lt;string, (Factory|Object)&gt;_
+:baby_bottle:  **factories** _Object.&lt;string, (Factory|Object)&gt;_
 
 Object with stream and property factories, indexed by their names. Objects may
 be nested.
@@ -167,16 +167,16 @@ Returns the merged, flattened and activated collection of observables.
 Creates a stream factory; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
 
-:baby_bottle: **init** _function(stream, name, scope)_
+:baby_bottle:  **init** _function(stream, name, scope)_
 
 Initialization function that defines stream dependencies and behavior. Should
 return an observable from which the eventual event stream will be instantiated.
 The values of `this`, `name` and `scope` are determined upon observable
 activation.
 
-If factory is constructed and deployed in the context of `create()`, `this` will
-equal the collection of observables, and the `name` and `scope` arguments will
-be the corresponding field name (flattened object key) and controller scope
+If factory is constructed and activated in the context of `create()`, `this`
+will equal the collection of observables, and the `name` and `scope` arguments
+will be the corresponding field name (flattened object key) and controller scope
 respectively. The value of `stream` will be the current stream, which will
 always be an empty stream upon initialization.
 
@@ -184,24 +184,69 @@ always be an empty stream upon initialization.
 
 Returns the constructed stream factory.
 
-## stream.calls()
+## stream.calls([arg])
 
 :octocat: [`src/controller.js#L247`](https://github.com/nouncy/bangjs/tree/master/src/controller.js#L247)
 
+Creates a stream factory; an object from which an observable of type
+`Bacon.EventStream` can be instantiated and initialized.
 
+Upon stream activation a function will be made available on the supplied scope
+at the supplied field name. Every invocation of this function will result in an
+event in the created event stream.
 
+:baby_bottle: optional **arg** _number_
 
-## property()
+Determines which of the function call arguments is passed on as event value in
+the event stream. If not specified, the full arguments array will make up the
+event value.
 
-:octocat: [`src/controller.js#L262`](https://github.com/nouncy/bangjs/tree/master/src/controller.js#L262)
+:dash: _Factory_
 
+Returns the constructed stream factory.
 
+## property(init)
 
+:octocat: [`src/controller.js#L278`](https://github.com/nouncy/bangjs/tree/master/src/controller.js#L278)
 
-## property.watch()
+Creates a property factory; an object from which an observable of type
+`Bacon.Property` can be instantiated and initialized.
 
-:octocat: [`src/controller.js#L272`](https://github.com/nouncy/bangjs/tree/master/src/controller.js#L272)
+:baby_bottle:  **init** _function(stream, name, scope)_
 
+Initialization function that defines property dependencies and behavior. Should
+return an observable from which the eventual property stream will be
+instantiated. The values of `this`, `name` and `scope` are determined upon
+observable activation.
 
+If factory is constructed and activated in the context of `create()`, `this`
+will equal the collection of observables, and the `name` and `scope` arguments
+will be the corresponding field name (flattened object key) and controller scope
+respectively. The value of `stream` will be the current stream, which will
+always be an empty stream upon initialization.
 
+:dash: _Factory_
+
+Returns the constructed property factory.
+
+## property.watch([merge])
+
+:octocat: [`src/controller.js#L307`](https://github.com/nouncy/bangjs/tree/master/src/controller.js#L307)
+
+Creates a property factory; an object from which an observable of type
+`Bacon.Property` can be instantiated and initialized.
+
+Events of this property reflect value changes of the scope variable as defined
+by the scope and field name that are supplied upon property activation. Note
+that initial scope variable value (if any) is ignored by default, as to make
+room for initial values from other sources (provided via `merge`).
+
+:baby_bottle: optional **merge** _function()_
+
+Should return an observable which will be merged into the event stream that
+watches the scope variable. Can be used to define an initial value.
+
+:dash: _Factory_
+
+Returns the constructed property factory.
 

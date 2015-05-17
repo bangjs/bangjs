@@ -41,11 +41,11 @@ stream.subscribe(function (event) {
 // → "End" true
 ```
 
-:baby_bottle: **scope** _$rootScope.Scope_
+:baby_bottle:  **scope** _$rootScope.Scope_
 
 Context in which stream should operate.
 
-:baby_bottle: **subscribe** _function(next, end)_
+:baby_bottle:  **subscribe** _function(next, end)_
 
 Binder function that initializes the events that will be passed along the
 stream. Receives provided `scope` as `this`.
@@ -97,16 +97,16 @@ property.subscribe(function (event) {
 // → "End" true
 ```
 
-:baby_bottle: **scope** _$rootScope.Scope_
+:baby_bottle:  **scope** _$rootScope.Scope_
 
 Context in which property should operate.
 
-:baby_bottle: **getValue** _function()_
+:baby_bottle:  **getValue** _function()_
 
 Function that will be called every time the property needs to know its current
 value. Receives provided `scope` as `this`.
 
-:baby_bottle: **subscribe** _function(next, invalidate, end)_
+:baby_bottle:  **subscribe** _function(next, invalidate, end)_
 
 Binder function that initializes the events that will be passed along the
 property stream. Receives provided `scope` as `this`.
@@ -158,11 +158,11 @@ $scope.$apply(function () {
 // → "William"
 ```
 
-:baby_bottle: **scope** _$rootScope.Scope_
+:baby_bottle:  **scope** _$rootScope.Scope_
 
 Context in which `expression` should be evaluated.
 
-:baby_bottle: **expression** _string_
+:baby_bottle:  **expression** _string_
 
 Expression that will be evaluated within the context of `scope` to obtain our
 current value.
@@ -204,11 +204,11 @@ $scope.functionAsStream("login").
 $scope.login("tim", "31337h4x0r");
 ```
 
-:baby_bottle: **scope** _$rootScope.Scope_
+:baby_bottle:  **scope** _$rootScope.Scope_
 
 Context in which stream origin function should be registered.
 
-:baby_bottle: **expression** _string_
+:baby_bottle:  **expression** _string_
 
 Expression that determines where in `scope` our stream origin function will be
 exposed.
@@ -246,16 +246,16 @@ user.subscribe(function (user) {
 // → true
 ```
 
-:baby_bottle: **scope** _$rootScope.Scope_
+:baby_bottle:  **scope** _$rootScope.Scope_
 
 Context in which values from `observable` should be made available.
 
-:baby_bottle: **expression** _string_
+:baby_bottle:  **expression** _string_
 
 Expression that determines where in `scope` values from `observable` will be
 exposed.
 
-:baby_bottle: **observable** _Bacon.Observable_
+:baby_bottle:  **observable** _Bacon.Observable_
 
 The observable that should be amended with the digest logic.
 

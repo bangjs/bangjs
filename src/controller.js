@@ -22,7 +22,7 @@ function ($scope, $http, Bacon, ctrl) {
 	var collection = ctrl.create($scope, {
 
 		loggedInUser: ctrl.property(function () {
-			return Bacon.fromPromise($http.get('/me'));
+			return Bacon.fromPromise( $http.get('/me') );
 		}),
 
 		books: {
@@ -31,7 +31,7 @@ function ($scope, $http, Bacon, ctrl) {
 
 			all: ctrl.property(function () {
 				return this.books.search.flatMapLatest(function (query) {
-					return Bacon.fromPromise($http.get('/searchBooks', { q: query }));
+					return Bacon.fromPromise( $http.get('/searchBooks', { q: query }) );
 				});
 			})
 
@@ -71,7 +71,7 @@ function ($scope, $http, Bacon, ctrl) {
 				country: this.loggedInUser.map('.country'),
 				limit: 5
 			}).flatMapLatest(function (queryDeals) {
-				return Bacon.fromPromise($http.get('/searchDeals', queryDeals));
+				return Bacon.fromPromise( $http.get('/searchDeals', queryDeals) );
 			});
 		})
 
@@ -229,9 +229,9 @@ return an observable from which the eventual event stream will be instantiated.
 The values of `this`, `name` and `scope` are determined upon observable
 activation.
 
-If factory is constructed and deployed in the context of `create()`, `this` will
-equal the collection of observables, and the `name` and `scope` arguments will
-be the corresponding field name (flattened object key) and controller scope
+If factory is constructed and activated in the context of `create()`, `this`
+will equal the collection of observables, and the `name` and `scope` arguments
+will be the corresponding field name (flattened object key) and controller scope
 respectively. The value of `stream` will be the current stream, which will
 always be an empty stream upon initialization.
 
@@ -244,10 +244,26 @@ Returns the constructed stream factory.
 
 	};
 
-	/**
-	 * @ngdoc method
-	 * @name module:bang.service:bang.controller#stream.calls
-	 */
+/**
+@ngdoc method
+@name module:bang.service:bang.controller#stream.calls
+@description
+
+Creates a stream factory; an object from which an observable of type
+`Bacon.EventStream` can be instantiated and initialized.
+
+Upon stream activation a function will be made available on the supplied scope
+at the supplied field name. Every invocation of this function will result in an
+event in the created event stream.
+
+@param {number=} arg
+Determines which of the function call arguments is passed on as event value in
+the event stream. If not specified, the full arguments array will make up the
+event value.
+
+@returns {Factory}
+Returns the constructed stream factory.
+*/
 	this.stream.calls = function (arg) {
 
 		return this(function (me, name, scope) {
@@ -259,20 +275,55 @@ Returns the constructed stream factory.
 
 	};
 
-	/**
-	 * @ngdoc method
-	 * @name module:bang.service:bang.controller#property
-	 */
+/**
+@ngdoc method
+@name module:bang.service:bang.controller#property
+@description
+
+Creates a property factory; an object from which an observable of type
+`Bacon.Property` can be instantiated and initialized.
+
+@param {function(stream, name, scope)} init
+Initialization function that defines property dependencies and behavior. Should
+return an observable from which the eventual property stream will be
+instantiated. The values of `this`, `name` and `scope` are determined upon
+observable activation.
+
+If factory is constructed and activated in the context of `create()`, `this`
+will equal the collection of observables, and the `name` and `scope` arguments
+will be the corresponding field name (flattened object key) and controller scope
+respectively. The value of `stream` will be the current stream, which will
+always be an empty stream upon initialization.
+
+@returns {Factory}
+Returns the constructed property factory.
+*/
 	this.property = function (init) {
 
 		return new PropertyFactory(init);
 
 	};
 
-	/**
-	 * @ngdoc method
-	 * @name module:bang.service:bang.controller#property.watch
-	 */
+/**
+@ngdoc method
+@name module:bang.service:bang.controller#property.watch
+@description
+
+Creates a property factory; an object from which an observable of type
+`Bacon.Property` can be instantiated and initialized.
+
+Events of this property reflect value changes of the scope variable as defined
+by the scope and field name that are supplied upon property activation. Note
+that initial scope variable value (if any) is ignored by default, as to make
+room for initial values from other sources (provided via `merge`).
+
+@param {function()=} merge
+Should return an observable which will be merged into the event stream that
+watches the scope variable. Can be used to define an initial value.
+
+@returns {Factory}
+Returns the constructed property factory.
+*/
 	this.property.watch = function (merge) {
 
 		return this(function (me, name, scope) {

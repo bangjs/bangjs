@@ -1,7 +1,7 @@
 {% macro functionSyntax(method) -%}
 {$ method.name $}(
 {%- for param in method.params -%}
-	{$ param.name $}{% if not loop.last %}, {% endif %}
+	{% if param.optional %}[{% endif %}{$ param.name $}{% if param.optional %}]{% endif %}{% if not loop.last %}, {% endif %}
 {%- endfor -%}
 )
 {%- endmacro -%}
@@ -29,7 +29,7 @@ Module {$ doc.moduleDoc.id | link $} :boom:
 {$ method.description $}
 
 {% for param in method.params -%}
-:baby_bottle: **{$ param.name $}** _{$ param.typeList | join('|') | escape $}_
+:baby_bottle: {% if param.optional %}optional{% endif %} **{$ param.name $}** _{$ param.typeList | join('|') | replace('=', '') | escape $}_
 
 {$ param.description $}
 

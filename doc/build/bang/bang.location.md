@@ -41,7 +41,7 @@ path.onValue(function (value) {
 // → "/login"
 ```
 
-:baby_bottle: **getValue** _function()_
+:baby_bottle:  **getValue** _function()_
 
 Function that will be called every time the property needs to know its current
 value. Receives `$location` as `this`.
