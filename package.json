@@ -2,7 +2,6 @@
   "name": "bang",
   "version": "0.1.0",
   "description": "Bacon-flavored Angular",
-  "main": "./src/core.js",
   "scripts": {
     "test": "./node_modules/karma/bin/karma start",
     "build": "./node_modules/.bin/gulp"
@@ -19,8 +18,8 @@
     "frp",
     "reactive"
   ],
-  "author": "Tim Molendijk <tim@nouncy.com>",
-  "license": "ISC",
+  "author": "Tim Molendijk <npm@timmolendijk.nl>",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/nouncy/bangjs/issues"
   },

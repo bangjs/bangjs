@@ -21,3 +21,7 @@ No need to go all-in, no lock-ins. It's all pretty unpretentious, [go see for yo
 
 * [Quick code sample](https://github.com/nouncy/bangjs/blob/master/doc/build/bang/bang.controller.md)
 * [Full API docs](https://github.com/nouncy/bangjs/blob/master/doc/build/bang/index.md)
+
+## License
+
+[MIT](http://timmolendijk.mit-license.org/)

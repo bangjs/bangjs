@@ -30,7 +30,6 @@ module.exports = function(config) {
 			'test/scope.js',
 			'test/location.js',
 			'test/controller.js'
-
 		],
 
 

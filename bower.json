@@ -1,9 +1,5 @@
 {
-  "name": "BANGjs",
-  "version": "0.1.0",
-  "authors": [
-    "Tim Molendijk <tim@nouncy.com>"
-  ],
+  "name": "bang",
   "description": "Bacon-flavored Angular",
   "main": "./dist/bang.js",
   "keywords": [
@@ -14,7 +10,7 @@
     "frp",
     "reactive"
   ],
-  "license": "ISC",
+  "license": "MIT",
   "ignore": [
     "**/.*",
     "node_modules",
@@ -22,12 +18,10 @@
     "test",
     "tests"
   ],
-  "dependencies": {
-    "bacon": "~0.7.50"
-  },
   "devDependencies": {
-    "angular": "~1.2.26",
-    "angular-mocks": "~1.2.26",
-    "lodash": "~3.3.1"
+    "bacon": "^0.7.58",
+    "angular": "^1.2.28",
+    "angular-mocks": "^1.2.28",
+    "lodash": "^3.8.0"
   }
 }
