@@ -543,18 +543,18 @@ angular.module('bang').
 @module bang
 @description
 
-Exposes tools to build controllers.
+Exposes tools for building controllers.
 
 The following example gives an overview of how the functions in this service can
-be combined to implement controller logic that can be easily hooked into any
-kind of view.
+be combined to implement powerful and robust asynchronous controller logic that
+can be easily hooked into any kind of view.
 
 ```js
 angular.module('demoModule', ['bang']).controller('demoCtrl', [
 '$scope', '$http', 'Bacon', 'bang.controller',
 function ($scope, $http, Bacon, ctrl) {
 
-	ctrl.create($scope, {
+	var collection = ctrl.create($scope, {
 
 		loggedInUser: ctrl.property(function () {
 			return Bacon.fromPromise($http.get('/me'));
@@ -582,8 +582,8 @@ function ($scope, $http, Bacon, ctrl) {
 
 		}
 
-	// Splitting this object does not serve any real purpose in this particular
-	// example, other than demonstrating how object merging works.
+	// Note that splitting this object does not serve any real purpose in this
+	// particular example, other than demonstrating how object merging works.
 	}, {
 
 		'books.listed': ctrl.property(function () {
@@ -612,6 +612,17 @@ function ($scope, $http, Bacon, ctrl) {
 
 	});
 
+	angular.forEach(collection, function (value, key) {
+		console.log(key, value.constructor.name);
+	});
+	// → "loggedInUser" "Property"
+	// → "books.search" "EventStream"
+	// → "books.all" "Property"
+	// → "books.listed" "Property"
+	// → "isBusy" "Property"
+	// → "input.rating" "Property"
+	// → "deals" "Property"
+
 }]);
 ```
 
@@ -639,7 +650,7 @@ A corresponding view could look as follows:
     </li>
   </ul>
   
-  <h2>{{books.listed.length}} out of {{books.all.length}} results</h2>
+  <h2>{{books.listed.length}} sufficiently rated out of {{books.all.length}} total matches</h2>
   <ul>
     <li ng-repeat="book in books.listed">
       <a ng-href="{{book.url}}">{{book.title}}</a> by {{book.author}}
@@ -659,15 +670,25 @@ service('bang.controller', ['$parse', 'Bacon', function ($parse, Bacon) {
 Creates an integrated collection of observables bound to a scope, ready to power
 any type of view.
 
-@param {$rootScope.Scope} scope
-Scope to which the defined observables are connected.
+The collection of supplied `factories` will first be transformed into a
+collection of observable instances by assigning each of them onto the (nested)
+property as defined by their field name (flattened object key).
 
-@param {Object.<string, (Factory|Object)>} observables
+Then each of these observables will be activated by executing their
+initialization logic in the context of the collection of observables. More
+specifically: the setup function as supplied upon factory construction will be
+invoked with said collection as `this`, and with corresponding field name and
+scope as arguments.
+
+@param {$rootScope.Scope} scope
+Scope to which the defined observables should be connected.
+
+@param {Object.<string, (Factory|Object)>} factories
 Object with stream and property factories, indexed by their names. Objects may
 be nested.
 
-Multiple `observables` objects can be specified, all of which will be flattened
-and then merged into a single non-nested map of key–value pairs.
+Multiple `factories` objects can be specified, all of which will be flattened
+and then merged into a single one-dimensional map of key–value pairs.
 
 @returns {Object.<string, Bacon.Observable>}
 Returns the merged, flattened and activated collection of observables.
@@ -729,10 +750,29 @@ Returns the merged, flattened and activated collection of observables.
 		return flat;
 	}
 	
-	/**
-	 * @ngdoc method
-	 * @name module:bang.service:bang.controller#stream
-	 */
+/**
+@ngdoc method
+@name module:bang.service:bang.controller#stream
+@description
+
+Creates a stream factory; an object from which an observable of type
+`Bacon.EventStream` can be instantiated and initialized.
+
+@param {function(stream, name, scope)} init
+Initialization function that defines stream dependencies and behavior. Should
+return an observable from which the eventual event stream will be instantiated.
+The values of `this`, `name` and `scope` are determined upon observable
+activation.
+
+If factory is constructed and deployed in the context of `create()`, `this` will
+equal the collection of observables, and the `name` and `scope` arguments will
+be the corresponding field name (flattened object key) and controller scope
+respectively. The value of `stream` will be the current stream, which will
+always be an empty stream upon initialization.
+
+@returns {Factory}
+Returns the constructed stream factory.
+*/
 	this.stream = function (init) {
 
 		return new StreamFactory(init);
