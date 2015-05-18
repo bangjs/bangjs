@@ -15,7 +15,7 @@ scopes.
 
 ## createStream(scope, subscribe)
 
-:octocat: [`src/scope.js#L16`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L16)
+:octocat: [`src/scope.js#L16`](https://github.com/bangjs/bangjs/tree/master/src/scope.js#L16)
 
 Creates a stream that automatically ends when provided scope is destroyed.
 
@@ -58,7 +58,7 @@ Returns the created event stream.
 
 ## createProperty(scope, getValue, subscribe)
 
-:octocat: [`src/scope.js#L86`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L86)
+:octocat: [`src/scope.js#L86`](https://github.com/bangjs/bangjs/tree/master/src/scope.js#L86)
 
 Creates a property with an initial value that accounts for laziness of the
 property. In other words; the initial value is not generated as long as the
@@ -121,7 +121,7 @@ Returns the created property.
 
 ## watchAsProperty(scope, expression)
 
-:octocat: [`src/scope.js#L180`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L180)
+:octocat: [`src/scope.js#L180`](https://github.com/bangjs/bangjs/tree/master/src/scope.js#L180)
 
 Watches an expression on scope and makes it available as a property.
 
@@ -173,7 +173,7 @@ Returns the created property.
 
 ## functionAsStream(scope, expression)
 
-:octocat: [`src/scope.js#L242`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L242)
+:octocat: [`src/scope.js#L242`](https://github.com/bangjs/bangjs/tree/master/src/scope.js#L242)
 
 Exposes a function on scope and makes its invocations (including arguments)
 available as a stream of events.
@@ -219,7 +219,7 @@ Returns the created event stream.
 
 ## digestObservable(scope, expression, observable)
 
-:octocat: [`src/scope.js#L313`](https://github.com/nouncy/bangjs/tree/master/src/scope.js#L313)
+:octocat: [`src/scope.js#L313`](https://github.com/bangjs/bangjs/tree/master/src/scope.js#L313)
 
 Digests an observable to scope. Note that the supplied observable is not
 subscribed to but is rather extended with a side effect. In order to effectuate

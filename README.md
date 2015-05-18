@@ -22,6 +22,8 @@ No need to go all-in, no lock-ins. It's all pretty unpretentious, [go see for yo
 * [Quick code sample](https://github.com/bangjs/bangjs/blob/master/doc/build/bang/bang.controller.md)
 * [Full API docs](https://github.com/bangjs/bangjs/blob/master/doc/build/bang/index.md)
 
-## License
+## Links
 
-[MIT](http://timmolendijk.mit-license.org/)
+* [Home page](http://bangjs.org/)
+* [Release history](https://github.com/bangjs/bangjs/blob/master/CHANGES.md)
+* [License](http://timmolendijk.mit-license.org/)

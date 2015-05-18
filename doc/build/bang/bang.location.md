@@ -10,7 +10,7 @@ Exposes helper functions to integrate Bacon.js observables with `$location`.
 
 ## asProperty(getValue)
 
-:octocat: [`src/location.js#L15`](https://github.com/nouncy/bangjs/tree/master/src/location.js#L15)
+:octocat: [`src/location.js#L15`](https://github.com/bangjs/bangjs/tree/master/src/location.js#L15)
 
 Watches a value from `$location` and makes it available as a property.
 
