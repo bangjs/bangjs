@@ -219,7 +219,7 @@ Returns the created event stream.
 
 ## digestObservable(scope, expression, observable)
 
-:octocat: [`src/scope.js#L313`](https://github.com/bangjs/bangjs/tree/master/src/scope.js#L313)
+:octocat: [`src/scope.js#L319`](https://github.com/bangjs/bangjs/tree/master/src/scope.js#L319)
 
 Digests an observable to scope. Note that the supplied observable is not
 subscribed to but is rather extended with a side effect. In order to effectuate
