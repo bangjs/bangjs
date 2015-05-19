@@ -187,14 +187,16 @@ Returns the merged, flattened and activated collection of observables.
 			if (field instanceof Factory)
 				field.get().subscribe(function (event) {
 
-					var color = "SaddleBrown";
+					var eventTypeColor = "SaddleBrown";
 					if (event.isInitial())
-						color = "Peru";
+						eventTypeColor = "Peru";
 					if (event.isError())
-						color = "Crimson";
+						eventTypeColor = "Crimson";
 
-					$log.debug("\uD83D\uDCA5 %c%s %s",
-						"color: " + color, scope.$id, name,
+					$log.debug("\uD83D\uDCA5%c%s %c%s %s",
+						"color: Gray", scope.$id,
+						"color: " + eventTypeColor, name,
+						field instanceof PropertyFactory ? "=" : "\u2192",
 						event.isError() ? event.error : event.value()
 					);
 
