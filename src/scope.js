@@ -283,32 +283,38 @@ exposed.
 @returns {Bacon.EventStream}
 Returns the created event stream.
 */
-	this.functionAsStream = function (scope, name) {
-		// TODO: Rename `name` to `expression`.
-		sendToStreams[name] = sendToStreams[name] || [];
+	this.functionAsStream = function (scope, expression) {
+		var parsed = $parse(expression),
+			fn = parsed(scope);
 
-		var parsed = $parse(name);
-		if (!angular.isFunction(parsed(scope)))
-			parsed.assign(scope, function () {
+		if (!angular.isFunction(fn)) {
+			fn = function () {
 				var args = [].slice.call(arguments);
-				sendToStreams[name].forEach(function (send) {
+				fn.streams.forEach(function (send) {
 					send(args);
 				});
-			});
+			}
+			fn.streams = [];
+			parsed.assign(scope, fn);
+		}
 
 		return this.createStream(scope, function (next) {
 
-			sendToStreams[name].push(next);
+			// Register our "event issuer" to be called every time `fn` is
+			// invoked.
+			fn.streams.push(next);
 
 			return function () {
-				sendToStreams[name].splice(sendToStreams[name].indexOf(next), 1);
-				if (sendToStreams[name].length === 0)
-					delete sendToStreams[name];
+				fn.streams.splice(fn.streams.indexOf(next), 1);
+				// TODO: Automatically remove function from scope at some point?
+				// Tricky because we would need a reliable way of detecting when
+				// a function has no more registered non-ended streams. Simply
+				// checking from `fn.streams.length === 0` won't cut it because
+				// it could be that some streams have not yet been activated
+				// (are still lazy).
 			};
 		});
 	};
-
-	var sendToStreams = {};
 
 /**
 @ngdoc method

@@ -230,8 +230,10 @@ describe("bang.scope", function () {
 			var scope = $rootScope.$new();
 
 			bs.functionAsStream(scope, 'ns.fn');
+			bs.functionAsStream(scope, 'ns.fn2');
 
 			expect(scope.ns.fn).to.be.a.function;
+			expect(scope.ns.fn2).to.be.a.function;
 			
 		});
 
@@ -284,6 +286,24 @@ describe("bang.scope", function () {
 			expect(onValue).to.have.been.calledTwice;
 			expect(onValue.getCall(0)).to.have.been.calledWithExactly(['multicast']);
 			expect(onValue.getCall(1)).to.have.been.calledWithExactly(['multicast']);
+
+		});
+
+		it("will never assign two streams to the same function if their scopes differ", function () {
+
+			var scope1 = $rootScope.$new(),
+				scope2 = $rootScope.$new();
+
+			var onValue1 = sinon.spy(),
+				onValue2 = sinon.spy();
+
+			bs.functionAsStream(scope1, 'fn').onValue(onValue1);
+			bs.functionAsStream(scope2, 'fn').onValue(onValue2);
+
+			scope1.fn('unicast');
+
+			expect(onValue1).to.have.been.calledOnce;
+			expect(onValue2).to.have.not.been.called;
 
 		});
 
