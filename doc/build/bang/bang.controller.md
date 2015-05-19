@@ -162,7 +162,7 @@ Returns the merged, flattened and activated collection of observables.
 
 ## stream(init)
 
-:octocat: [`src/controller.js#L218`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L218)
+:octocat: [`src/controller.js#L231`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L231)
 
 Creates a stream factory; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -186,7 +186,7 @@ Returns the constructed stream factory.
 
 ## stream.calls([arg])
 
-:octocat: [`src/controller.js#L247`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L247)
+:octocat: [`src/controller.js#L260`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L260)
 
 Creates a stream factory; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -207,7 +207,7 @@ Returns the constructed stream factory.
 
 ## property(init)
 
-:octocat: [`src/controller.js#L278`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L278)
+:octocat: [`src/controller.js#L291`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L291)
 
 Creates a property factory; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -231,7 +231,7 @@ Returns the constructed property factory.
 
 ## property.watch([merge])
 
-:octocat: [`src/controller.js#L307`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L307)
+:octocat: [`src/controller.js#L320`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L320)
 
 Creates a property factory; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.

@@ -666,7 +666,7 @@ A corresponding view could look as follows:
 </div>
 ```
 */
-service('bang.controller', ['$parse', 'Bacon', function ($parse, Bacon) {
+service('bang.controller', ['$parse', '$log', 'Bacon', function ($parse, $log, Bacon) {
 
 /**
 @ngdoc method
@@ -726,7 +726,20 @@ Returns the merged, flattened and activated collection of observables.
 
 		angular.forEach(fields, function (field, name) {
 			if (field instanceof Factory)
-				field.get().subscribe(angular.noop);
+				field.get().subscribe(function (event) {
+
+					var color = "SaddleBrown";
+					if (event.isInitial())
+						color = "Peru";
+					if (event.isError())
+						color = "Crimson";
+
+					$log.debug("\uD83D\uDCA5 %c%s %s",
+						"color: " + color, scope.$id, name,
+						event.isError() ? event.error : event.value()
+					);
+
+				});
 		});
 
 		return context;
