@@ -193,10 +193,10 @@ Returns the merged, flattened and activated collection of observables.
 					if (event.isError())
 						eventTypeColor = "Crimson";
 
-					$log.debug("\uD83D\uDCA5%c%s %c%s %s",
+					$log.debug(["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
 						"color: Gray", scope.$id,
 						"color: " + eventTypeColor, name,
-						field instanceof PropertyFactory ? "=" : "\u2192",
+						"color: Gray", field instanceof PropertyFactory ? "=" : "\u2192",
 						event.isError() ? event.error : event.value()
 					);
 
