@@ -1,3 +1,11 @@
+### 0.1.4
+:date: Sunday May 24th, 2015
+
+* Fix bug in `stream.calls()` when used without arguments.
+* Do not crash `createStream()` when supplied scope does not have `$on()`.
+* Add reference to TodoMVC app in README.
+* Tiny improvement in docs for `property()`.
+
 ### 0.1.3
 :date: Tuesday May 19th, 2015
 

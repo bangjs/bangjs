@@ -22,6 +22,13 @@ No need to go all-in, no lock-ins. It's all pretty unpretentious, [go see for yo
 * [Quick code sample](https://github.com/bangjs/bangjs/blob/master/doc/build/bang/bang.controller.md)
 * [Full API docs](https://github.com/bangjs/bangjs/blob/master/doc/build/bang/index.md)
 
+## Demo
+
+Concise and compliant implementation of the [TodoMVC](http://todomvc.com/) benchmark app:
+
+* [Source code](https://github.com/bangjs/todomvc/)
+* [Live app](https://bangjs.github.io/todomvc/)
+
 ## Links
 
 * [Home page](http://bangjs.org/)
