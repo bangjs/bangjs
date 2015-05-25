@@ -2,7 +2,7 @@
 
 angular.module('bang').
 
-service('bang', ['$parse', '$q', 'Bacon', function ($parse, $q, Bacon) {
+service('bang', ['$parse', '$q', '$log', 'Bacon', function ($parse, $q, $log, Bacon) {
 	
 	this.create = function (external) {
 		var fields = [].slice.call(arguments, 1);
@@ -27,7 +27,22 @@ service('bang', ['$parse', '$q', 'Bacon', function ($parse, $q, Bacon) {
 
 		angular.forEach(fields, function (field, name) {
 			if (field instanceof Factory)
-				field.observable().subscribe(angular.noop);
+				field.observable().subscribe(function (event) {
+
+					var eventTypeColor = "SaddleBrown";
+					if (event.isInitial())
+						eventTypeColor = "Peru";
+					if (event.isError())
+						eventTypeColor = "Crimson";
+
+					$log.debug(["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
+						"color: Gray", external.$id || external,
+						"color: " + eventTypeColor, name,
+						"color: Gray", "=", //field instanceof PropertyFactory ? "=" : "\u2192",
+						event.isError() ? event.error : event.value()
+					);
+
+				});
 		});
 
 		return internal;
@@ -61,15 +76,28 @@ service('bang', ['$parse', '$q', 'Bacon', function ($parse, $q, Bacon) {
 		return new Factory(setup, Bacon.EventStream);
 	};
 	
+	this.stream.expose = function (setup) {
+		var factory = this(function (name, external) {
+			$parse(name).assign(external, factory.observable());
+			return setup.apply(this, arguments);
+		});
+		return factory;
+	};
+	
 	this.stream.function = function (flatMapLatest) {
 		return this(function (name, external) {
 			var bus = new Bacon.Bus();
 			$parse(name).assign(external, function () {
-				var stream = Bacon.once(arguments).flatMapLatest(function (args) {
-					return flatMapLatest.apply(this, args);
+				var args = arguments;
+				// TODO: Can we make `.firstToPromise()` work with `$q`?
+				return $q(function (resolve, reject) {
+					// TODO: Unplug at any point in time??
+					bus.plug(
+						Bacon.once(true).flatMapLatest(function () {
+							return flatMapLatest.apply(this, args);
+						}).doAction(resolve).doError(reject)
+					);
 				});
-				bus.plug(stream);
-				return stream.firstToPromise($q);
 			});
 			return bus;
 		});
@@ -125,15 +153,19 @@ service('bang', ['$parse', '$q', 'Bacon', function ($parse, $q, Bacon) {
 		this.observable = function () {
 			return observable;
 		};
+		
 		this.start = function (internal, name, external) {
 			var result = setup.call(internal, name, external);
+			
 			if (result instanceof Bacon.Bus)
 				result = result.toProperty();
 			if (result instanceof Bacon.Property)
 				result = result.toEventStream();
 			if (result instanceof Bacon.EventStream)
 				bus.plug(result);
+			
 			delete this.start;
+			
 			return this;
 		};
 	}
