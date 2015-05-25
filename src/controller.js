@@ -125,7 +125,7 @@ A corresponding view could look as follows:
 </div>
 ```
 */
-service('bang.controller', ['$parse', 'Bacon', function ($parse, Bacon) {
+service('bang.controller', ['$parse', '$log', 'Bacon', function ($parse, $log, Bacon) {
 
 /**
 @ngdoc method
@@ -188,7 +188,22 @@ Returns the merged, flattened and activated collection of observables.
 
 		angular.forEach(fields, function (field, name) {
 			if (field instanceof Factory)
-				field.get().subscribe(angular.noop);
+				field.get().subscribe(function (event) {
+
+					var eventTypeColor = "SaddleBrown";
+					if (event.isInitial())
+						eventTypeColor = "Peru";
+					if (event.isError())
+						eventTypeColor = "Crimson";
+
+					$log.debug(["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
+						"color: Gray", scope.$id,
+						"color: " + eventTypeColor, name,
+						"color: Gray", field instanceof PropertyFactory ? "=" : "\u2192",
+						event.isError() ? event.error : event.value()
+					);
+
+				});
 		});
 
 		return context;
