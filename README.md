@@ -27,7 +27,7 @@ No need to go all-in, no lock-ins. It's all pretty unpretentious, [go see for yo
 Concise and compliant implementation of the [TodoMVC](http://todomvc.com/) benchmark app:
 
 * [Source code](https://github.com/bangjs/todomvc/)
-* [Live app](https://bangjs.github.io/todomvc/)
+* [Live app](http://bangjs.org/todomvc/)
 
 ## Links
 
