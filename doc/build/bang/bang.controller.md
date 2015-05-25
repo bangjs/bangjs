@@ -147,6 +147,11 @@ specifically: the setup function as supplied upon factory construction will be
 invoked with said collection as `this`, and with corresponding field name and
 scope as arguments.
 
+Logs all events in each of its observables to debug console for instant insight
+and rapid debugging during development. Note that currently this feature looks
+best in Google Chrome and Safari. Messages are outputted via `$log.debug()`,
+which means they can be disabled using the `$logProvider.debugEnabled()` flag.
+
 :baby_bottle:  **scope** _$rootScope.Scope_
 
 Scope to which the defined observables should be connected.
@@ -165,7 +170,7 @@ Returns the merged, flattened and activated collection of observables.
 
 ## stream(init)
 
-:octocat: [`src/controller.js#L236`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L236)
+:octocat: [`src/controller.js#L241`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L241)
 
 Creates a stream factory; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -189,7 +194,7 @@ Returns the constructed stream factory.
 
 ## stream.calls([arg])
 
-:octocat: [`src/controller.js#L265`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L265)
+:octocat: [`src/controller.js#L270`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L270)
 
 Creates a stream factory; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -210,7 +215,7 @@ Returns the constructed stream factory.
 
 ## property(init)
 
-:octocat: [`src/controller.js#L296`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L296)
+:octocat: [`src/controller.js#L301`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L301)
 
 Creates a property factory; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -234,7 +239,7 @@ Returns the constructed property factory.
 
 ## property.watch([merge])
 
-:octocat: [`src/controller.js#L325`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L325)
+:octocat: [`src/controller.js#L330`](https://github.com/bangjs/bangjs/tree/master/src/controller.js#L330)
 
 Creates a property factory; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.

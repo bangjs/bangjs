@@ -148,6 +148,11 @@ specifically: the setup function as supplied upon factory construction will be
 invoked with said collection as `this`, and with corresponding field name and
 scope as arguments.
 
+Logs all events in each of its observables to debug console for instant insight
+and rapid debugging during development. Note that currently this feature looks
+best in Google Chrome and Safari. Messages are outputted via `$log.debug()`,
+which means they can be disabled using the `$logProvider.debugEnabled()` flag.
+
 @param {$rootScope.Scope} scope
 Scope to which the defined observables should be connected.
 
