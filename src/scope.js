@@ -69,9 +69,10 @@ Returns the created event stream.
 				sinkEvent(new Bacon.End());
 			}));
 
-			dispose.push(scope.$on('$destroy', function () {
-				sinkEvent(new Bacon.End());
-			}));
+			if (angular.isFunction(scope.$on))
+				dispose.push(scope.$on('$destroy', function () {
+					sinkEvent(new Bacon.End());
+				}));
 			
 			function unsubscribe () {
 				dispose.forEach(function (fn) {
