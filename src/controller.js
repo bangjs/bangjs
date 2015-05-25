@@ -125,7 +125,7 @@ A corresponding view could look as follows:
 </div>
 ```
 */
-service('bang.controller', ['$parse', 'Bacon', function ($parse, Bacon) {
+service('bang.controller', ['$parse', '$log', 'Bacon', function ($parse, $log, Bacon) {
 
 /**
 @ngdoc method
@@ -147,6 +147,11 @@ initialization logic in the context of the collection of observables. More
 specifically: the setup function as supplied upon factory construction will be
 invoked with said collection as `this`, and with corresponding field name and
 scope as arguments.
+
+Logs all events in each of its observables to debug console for instant insight
+and rapid debugging during development. Note that currently this feature looks
+best in Google Chrome and Safari. Messages are outputted via `$log.debug()`,
+which means they can be disabled using the `$logProvider.debugEnabled()` flag.
 
 @param {$rootScope.Scope} scope
 Scope to which the defined observables should be connected.
@@ -188,7 +193,22 @@ Returns the merged, flattened and activated collection of observables.
 
 		angular.forEach(fields, function (field, name) {
 			if (field instanceof Factory)
-				field.get().subscribe(angular.noop);
+				field.get().subscribe(function (event) {
+
+					var eventTypeColor = "SaddleBrown";
+					if (event.isInitial())
+						eventTypeColor = "Peru";
+					if (event.isError())
+						eventTypeColor = "Crimson";
+
+					$log.debug(["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
+						"color: Gray", scope.$id,
+						"color: " + eventTypeColor, name,
+						"color: Gray", field instanceof PropertyFactory ? "=" : "\u2192",
+						event.isError() ? event.error : event.value()
+					);
+
+				});
 		});
 
 		return context;
