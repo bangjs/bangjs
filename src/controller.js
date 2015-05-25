@@ -135,6 +135,9 @@ service('bang.controller', ['$parse', 'Bacon', function ($parse, Bacon) {
 Creates an integrated collection of observables bound to a scope, ready to power
 any type of view.
 
+Automatically digests all instances of type `Bacon.Property` onto the supplied
+scope.
+
 The collection of supplied `factories` will first be transformed into a
 collection of observable instances by assigning each of them onto the (nested)
 property as defined by their field name (flattened object key).
@@ -268,7 +271,7 @@ Returns the constructed stream factory.
 
 		return this(function (me, name, scope) {
 			var stream = scope.functionAsStream(name);
-			if (arguments.length > 0)
+			if (arg !== undefined)
 				stream = stream.map('.' + arg);
 			return stream;
 		});
