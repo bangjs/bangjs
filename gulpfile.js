@@ -10,7 +10,8 @@ gulp.task('js', function () {
 		'src/bacon.js',
 		'src/scope.js',
 		'src/location.js',
-		'src/controller.js'
+		'src/controller.js',
+		'src/bang.js'
 	]).pipe(
 		gulpConcat('bang.js')
 	).pipe(
