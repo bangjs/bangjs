@@ -25,6 +25,9 @@
   },
   "homepage": "http://bangjs.org",
   "devDependencies": {
+    "angular": "^1.4.0",
+    "angular-mocks": "^1.4.0",
+    "baconjs": "^0.7.60",
     "dgeni": "^0.4.1",
     "dgeni-packages": "^0.10.13",
     "gulp": "^3.8.11",
@@ -32,6 +35,7 @@
     "karma": "^0.12.31",
     "karma-mocha": "^0.1.10",
     "karma-sinon-chai": "^0.3.0",
+    "lodash": "^3.9.3",
     "mocha": "^2.1.0"
   }
 }

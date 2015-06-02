@@ -15,11 +15,12 @@ module.exports = function(config) {
 
 		// list of files / patterns to load in the browser
 		files: [
-			'bower_components/bacon/dist/Bacon.js',
-
-			'bower_components/angular/angular.js',
-			'bower_components/angular-mocks/angular-mocks.js',
-			'bower_components/lodash/lodash.js',
+			'node_modules/angular/angular.js',
+			'node_modules/angular-mocks/angular-mocks.js',
+			
+			'node_modules/baconjs/dist/Bacon.js',
+			
+			'node_modules/lodash/index.js',
 
 			'src/core.js',
 			'src/bacon.js',
