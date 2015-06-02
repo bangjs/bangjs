@@ -1,3 +1,9 @@
+### 0.1.5
+:date: Monday May 25th, 2015
+
+* Fancy debug logging in `bang.controller#create`.
+* Some trivial improvements in README and CHANGES.
+
 ### 0.1.4
 :date: Sunday May 24th, 2015
 
