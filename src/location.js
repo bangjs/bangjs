@@ -10,7 +10,7 @@ angular.module('bang').
 
 Exposes helper functions to integrate Bacon.js observables with `$location`.
 */
-service('bang.location', ['$location', function ($location) {
+service('bang.location', ['$rootScope', 'Bacon', function ($rootScope, Bacon) {
 
 /**
 @ngdoc method
@@ -54,32 +54,27 @@ value. Receives `$location` as `this`.
 Returns the created property.
 */
 	this.asProperty = function (getValue) {
-		return $location.asProperty(getValue);
+		return Bacon.fromBinder(function (sink) {
+			
+			sink(new Bacon.Initial(getValue()));
+			
+			$rootScope.$on('$locationChangeSuccess', function () {
+				sink(new Bacon.Next(getValue()));
+			});
+			
+		}).skipDuplicates().toProperty();
 	};
 
 }]).
 
 config(['$provide', function ($provide) {
-
-	$provide.decorator('$location', ['$delegate', '$rootScope', function ($delegate, $rootScope) {
-
-		Object.getPrototypeOf($delegate).asProperty = function (getValue) {
-			var $location = this;
-
-			return $rootScope.createProperty(function () {
-
-				return getValue.call($location);
-
-			}, function (next, invalidate) {
-
-				return this.$on('$locationChangeSuccess', invalidate);
-
-			}).skipDuplicates();
-
-		};
-
+	
+	$provide.decorator('$location', ['$delegate', 'bang.location', function ($delegate, bangLocation) {
+		
+		Object.getPrototypeOf($delegate).asProperty = bangLocation.asProperty;
+		
 		return $delegate;
-
+		
 	}]);
 
 }]);

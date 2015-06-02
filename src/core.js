@@ -1,4 +1,4 @@
-;!function (angular) { 'use strict';
+;!function (angular, Bacon) { 'use strict';
 
 /**
 @ngdoc module
@@ -7,6 +7,16 @@
 
 The main BangJS module. Add this to your app module dependencies to get going.
 */
-angular.module('bang', []);
+angular.module('bang', []).
 
-}(window.angular);
+/**
+@ngdoc service
+@name Bacon
+@module bang
+@description
+
+Exposes {@link https://baconjs.github.io/ Bacon.js} as a service.
+*/
+constant('Bacon', Bacon);
+
+}(window.angular, window.Bacon);

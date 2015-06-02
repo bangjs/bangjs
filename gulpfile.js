@@ -6,11 +6,10 @@ var gulp = require('gulp'),
 gulp.task('js', function () {
 
 	return gulp.src([
+		'node_modules/bacon.circuit/dist/bacon.circuit.js',
 		'src/core.js',
-		'src/bacon.js',
-		'src/scope.js',
 		'src/location.js',
-		'src/controller.js'
+		'src/bang.js'
 	]).pipe(
 		gulpConcat('bang.js')
 	).pipe(
