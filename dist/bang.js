@@ -1,4 +1,258 @@
-;!function (angular) { 'use strict';
+if (typeof exports === 'object')
+	Bacon = require('baconjs');
+;!function () { 'use strict';
+
+function Circuit(face) {
+	// Calling without arguments can be done if we want to skip initialization
+	// during inheritance.
+	if (arguments.length === 0) return;
+	
+	var circuit = this;
+	
+	circuit.face = face;
+	
+	var fieldsObjs = [].slice.call(arguments, 1),
+		fields = {};
+	
+	flattenArray(fieldsObjs).map(function (fieldsObj) {
+		return unnestKeys(fieldsObj);
+	}).forEach(function (fieldsObj) {
+		Object.keys(fieldsObj).forEach(function (key) {
+			if (fieldsObj[key] instanceof Bacon.Field)
+				fields[key] = fieldsObj[key];
+		});
+	});
+	
+	var keys = Object.keys(fields);
+
+	var context = {};
+	
+	keys.forEach(function (key) {
+		// TODO: Making this an actual getter-setter is a bit pointless for
+		// this scenario, but ah well doesn't really hurt either.
+		setObjectProp(context, key, fields[key].observable());
+	});
+	
+	keys.forEach(function (key) {
+		fields[key].start(context, key, circuit);
+	});
+	
+	keys.forEach(function (key) {
+		fields[key].observable().subscribe(function (event) {
+			circuit.onEvent(key, fields[key].observable(), event);
+		});
+	});
+}
+
+Circuit.prototype.set = function (key, value) {
+	setObjectProp(this.face, key, value);
+	return this;
+};
+Circuit.prototype.watch = function (key, cb) {
+	setObjectProp(this.face, key);
+	var leaf = findLeaf(this.face, key);
+	var desc = Object.getOwnPropertyDescriptor(leaf.object, leaf.key);
+	desc.set.listeners.push(cb);
+	return this;
+};
+Circuit.prototype.onEvent = function () {};
+Circuit.prototype.promiseConstructor = typeof Promise === 'function' && Promise;
+
+function findLeaf(obj, path, create) {
+	var keys = path.split('.');
+	
+	for (var i = 0; i < keys.length - 1; i++) {
+		var key = keys[i];
+		
+		// TODO: Does this cover all scenarios in which we want to fail at
+		// finding a leaf?
+		if (!obj)
+			return;
+		
+		if (create === true && !obj.hasOwnProperty(key))
+			obj[key] = {};
+		
+		obj = obj[key];
+	}
+	return {
+		object: obj,
+		key: keys[i]
+	};
+}
+
+function setObjectProp(obj, path, value) {
+	var leaf = findLeaf(obj, path, true);
+	
+	if (!Object.getOwnPropertyDescriptor(leaf.object, leaf.key)) {
+		
+		var setter = function (v) {
+			value = v;
+			setter.listeners.forEach(function (listener) {
+				listener(value);
+			});
+		};
+		setter.listeners = [];
+		
+		Object.defineProperty(leaf.object, leaf.key, {
+			configurable: true,
+			enumberable: true,
+			get: function () {
+				return value;
+			},
+			set: setter
+		});
+		
+	}
+	
+	if (arguments.length > 2)
+		leaf.object[leaf.key] = value;
+}
+
+function unnestKeys(obj, path) {
+	path = path || [];
+	
+	var flat = {};
+	for (var key in obj) {
+		if (!obj.hasOwnProperty(key)) continue;
+		
+		var keyPath = path.slice();
+		keyPath.push(key);
+		
+		if (obj[key] instanceof Bacon.Field) {
+			flat[keyPath.join('.')] = obj[key];
+			continue;
+		}
+		
+		var nestedObj = unnestKeys(obj[key], keyPath);
+		for (var nestedKey in nestedObj) {
+			if (!nestedObj.hasOwnProperty(nestedKey)) continue;
+			flat[nestedKey] = nestedObj[nestedKey];
+		}
+	}
+	return flat;
+}
+
+function flattenArray(array) {
+	var flat = [];
+	array.forEach(function (item) {
+		if (Array.isArray(item))
+			flat.push.apply(flat, flattenArray(item));
+		else
+			flat.push(item);
+	});
+	return flat;
+}
+
+Bacon.Circuit = Circuit;
+
+}();
+;!function () { 'use strict';
+
+function Field(setup, Type) {
+	var bus = new Bacon.Bus();
+	
+	var observable = bus.toProperty();
+	if (Type === Bacon.EventStream) 
+		observable = observable.toEventStream();
+	
+	this.observable = function () {
+		return observable;
+	};
+	
+	this.start = function (context, name, circuit) {
+		var result = setup.call(context, name, circuit);
+		
+		if (result instanceof Bacon.Bus)
+			result = result.toProperty();
+		if (result instanceof Bacon.Property)
+			result = result.toEventStream();
+		if (result instanceof Bacon.EventStream)
+			bus.plug(result.delay(0));
+		
+		delete this.start;
+		
+		return this;
+	};
+}
+
+Field.stream = function (setup) {
+	return new Field(setup, Bacon.EventStream);
+};
+
+Field.property = function (setup) {
+	return new Field(setup, Bacon.Property);
+};
+
+Field.stream.expose = Field.property.expose = function (setup) {
+	var field = this(function (name, circuit) {
+		var context = this;
+		circuit.set(name, field.observable());
+		return setup.apply(context, arguments);
+	});
+	return field;
+};
+
+Field.stream.function = function (flatMapLatest) {
+	flatMapLatest = flatMapLatest || function () {
+		return arguments;
+	};
+	return this(function (name, circuit) {
+		var context = this;
+		return Bacon.fromBinder(function (sink) {
+			circuit.set(name, function () {
+				var stream = Bacon.once(arguments).flatMapLatest(function (args) {
+					return flatMapLatest.apply(context, args);
+				});
+				
+				if (!circuit.promiseConstructor) {
+					sink(new Bacon.Next(stream));
+					return;
+				}
+				
+				return new circuit.promiseConstructor(function (resolve, reject) {
+					sink(new Bacon.Next(stream.doAction(resolve).doError(reject)));
+				});
+			});
+			return function () {};
+		}).flatMapLatest(function (stream) {
+			return stream;
+		});
+	});
+};
+
+Field.property.digest = function (setup) {
+	return this(function (name, circuit) {
+		var context = this;
+		return setup.apply(context, arguments).doAction(function (value) {
+			circuit.set(name, value);
+		});
+	});
+};
+
+Field.property.watch = function (merge) {
+	merge = merge || function () {
+		return Bacon.never();
+	};
+	return this.digest(function (name, circuit) {
+		var context = this;
+		return Bacon.mergeAll(
+			merge.call(context),
+			Bacon.fromBinder(function (sink) {
+				circuit.watch(name, function (value) {
+					sink(new Bacon.Next(value));
+				});
+				return function () {};
+			})
+		).skipDuplicates();
+	});
+};
+
+Bacon.Field = Field;
+
+}();
+if (typeof exports === 'object')
+	module.exports = Bacon;
+;!function (angular, Bacon) { 'use strict';
 
 /**
 @ngdoc module
@@ -7,41 +261,7 @@
 
 The main BangJS module. Add this to your app module dependencies to get going.
 */
-angular.module('bang', []);
-
-}(window.angular);
-;!function (angular, Bacon) { 'use strict';
-
-angular.module('bang').
-
-run(['$window', '$location', function ($window, $location) {
-
-	Bacon.Observable.prototype.redirect = function (to, replace) {
-
-		return this.doAction(function (value) {
-			var redirectTo = angular.isFunction(to) ? to(value) : to;
-			// TODO: This condition is not accurate as a determiner for doing an
-			// "internal" versus "external" redirect, but for now it suffices.
-			if (redirectTo.indexOf("://") === -1) {
-				// TODO: Assuming that `redirectTo` holds solely a path is a bit
-				// tricky.
-				$location.path(redirectTo);
-				if (replace)
-					$location.replace();
-			} else {
-				$window.location[replace ? 'replace' : 'assign'](redirectTo);
-			}
-		});
-	};
-
-	Bacon.Observable.prototype.doErrorAction = function (fn) {
-		return Bacon.mergeAll(
-			this,
-			this.errors().mapError(angular.identity).doAction(fn).filter(false)
-		);
-	};
-
-}]).
+angular.module('bang', []).
 
 /**
 @ngdoc service
@@ -60,412 +280,13 @@ angular.module('bang').
 
 /**
 @ngdoc service
-@name bang.scope
-@module bang
-@description
-
-Exposes helper functions to integrate Bacon.js observables with AngularJS
-scopes.
-*/
-service('bang.scope', ['$parse', 'Bacon', function ($parse, Bacon) {
-
-/**
-@ngdoc method
-@name module:bang.service:bang.scope#createStream
-@description
-
-Creates a stream that automatically ends when provided scope is destroyed.
-
-This method is also available on `$rootScope` under the same name, minus the
-`scope` parameter.
-
-```js
-var stream = $scope.createStream(function (next, end) {
-	next(1);
-	setTimeout(function () {
-		next(2);
-		end();
-	}, 2000);
-});
-
-stream.subscribe(function (event) {
-	console.log(event.constructor.name, event.isEnd() || event.value());
-});
-
-// → "Next" 1
-// → <2 second delay>
-// → "Next" 2
-// → "End" true
-```
-
-@param {$rootScope.Scope} scope
-Context in which stream should operate.
-
-@param {function(next, end)} subscribe
-Binder function that initializes the events that will be passed along the
-stream. Receives provided `scope` as `this`.
-- Invoke `next(value)` to issue a next event with given value.
-- Invoke `end()` to end the stream.
-
-@returns {Bacon.EventStream}
-Returns the created event stream.
-*/
-	this.createStream = function (scope, subscribe) {
-		return Bacon.fromBinder(function (sink) {
-			function sinkEvent (e) {
-				if (sink(e) === Bacon.noMore)
-					unsubscribe();
-			}
-
-			var dispose = [];
-
-			dispose.push(subscribe.call(scope, function (value) {
-				sinkEvent(new Bacon.Next(value));
-			}, function () {
-				sinkEvent(new Bacon.End());
-			}));
-
-			if (angular.isFunction(scope.$on))
-				dispose.push(scope.$on('$destroy', function () {
-					sinkEvent(new Bacon.End());
-				}));
-			
-			function unsubscribe () {
-				dispose.forEach(function (fn) {
-					if (angular.isFunction(fn)) fn();
-				});
-			};
-
-			return unsubscribe;
-		});
-	};
-
-/**
-@ngdoc method
-@name module:bang.service:bang.scope#createProperty
-@description
-
-Creates a property with an initial value that accounts for laziness of the
-property. In other words; the initial value is not generated as long as the
-property is not subscribed to.
-
-Resulting property automatically ends when provided scope is destroyed.
-
-This method is also available on `$rootScope` under the same name, minus the
-`scope` parameter.
-
-```js
-// `$document.title` has some value other than `"Initial title"` at this point.
-
-var property = $scope.createProperty(function () {
-	return $document.title;
-}, function (next, invalidate, end) {
-	next("Fake title");
-	setTimeout(function () {
-		invalidate();
-		end();
-	}, 2000);
-});
-
-$document.title = "Initial title";
-
-property.subscribe(function (event) {
-	console.log(event.constructor.name, event.isEnd() || event.value());
-
-	$document.title = "Changed title";
-});
-
-// → "Initial" "Initial title"
-// → "Next" "Fake title"
-// → <2 second delay>
-// → "Next" "Changed title"
-// → "End" true
-```
-
-@param {$rootScope.Scope} scope
-Context in which property should operate.
-
-@param {function()} getValue
-Function that will be called every time the property needs to know its current
-value. Receives provided `scope` as `this`.
-
-@param {function(next, invalidate, end)} subscribe
-Binder function that initializes the events that will be passed along the
-property stream. Receives provided `scope` as `this`.
-- Invoke `next(value)` to issue a next event with given value.
-- Invoke `invalidate()` to issue a next event with value as provided by
-  `getValue()`.
-- Invoke `end()` to end the stream.
-
-@returns {Bacon.Property}
-Returns the created property.
-*/
-	this.createProperty = function (scope, getValue, subscribe) {
-		var initial;
-		function getInitialValue () {
-			return initial;
-		}
-
-		return this.createStream(scope, function (next, end) {
-			// As soon as this observable loses its laziness, the first thing we
-			// should do is generate an initial value, or else we end up using
-			// the value that results from the second call to `getValue` as
-			// initial value.
-			initial = getValue.call(this);
-
-			var sinkNext = function (value) {
-				if (arguments.length === 0)
-					value = getValue.call(this);
-				next(value);
-			}.bind(this);
-
-			return subscribe.call(this, sinkNext, function () {
-				// Make sure no value argument is passed along to make it act as
-				// an invalidate.
-				sinkNext();
-			}, end);
-		}).
-		// Set initial value placeholder, to be replaced by actual value as soon
-		// as the property is activated (subscribed to). Inspired on [this idea]
-		// (https://github.com/baconjs/bacon.js/issues/536#issuecomment-
-		// 75656100).
-		toProperty(getInitialValue).map(function (value) {
-			return value === getInitialValue ? getInitialValue() : value;
-		});
-	};
-
-/**
-@ngdoc method
-@name module:bang.service:bang.scope#watchAsProperty
-@description
-
-Watches an expression on scope and makes it available as a property.
-
-Initial value is always the current value of watched expression, regardless of
-whether it exists yet or not.
-
-Resulting property automatically ends when provided scope is destroyed.
-
-This method is also available on `$rootScope` under the same name, minus the
-`scope` parameter.
-
-```js
-$scope.user = {
-	name: "Tim",
-	city: "Amsterdam"
-};
-
-var property = $scope.watchAsProperty("user.name");
-
-$scope.user.name = "Tony";
-
-property.onValue(function (value) {
-	console.log(value);
-});
-
-$scope.$apply(function () {
-	$scope.user = {
-		name: "William",
-		city: "Amsterdam"
-	};
-});
-
-// → "Tony"
-// → "William"
-```
-
-@param {$rootScope.Scope} scope
-Context in which `expression` should be evaluated.
-
-@param {string} expression
-Expression that will be evaluated within the context of `scope` to obtain our
-current value.
-
-@returns {Bacon.Property}
-Returns the created property.
-*/
-	this.watchAsProperty = function (scope, expression) {
-		return this.createProperty(scope, function () {
-
-			return $parse(expression)(this);
-
-		}, function (next) {
-
-			return this.$watch(expression, next);
-
-		}).skipDuplicates();
-	};
-
-/**
-@ngdoc method
-@name module:bang.service:bang.scope#functionAsStream
-@description
-
-Exposes a function on scope and makes its invocations (including arguments)
-available as a stream of events.
-
-Supports registering multiple streams at the same scope function.
-
-Resulting stream automatically ends when provided scope is destroyed.
-
-This method is also available on `$rootScope` under the same name, minus the
-`scope` parameter.
-
-```js
-$scope.functionAsStream("login").
-	flatMapLatest(function (args) {
-		return Bacon.fromPromise($http.post('/login', {
-			username: args[0],
-			password: args[1]
-		}));
-	}).
-	onValue(function (user) {
-		console.log("logged in as", user.name);
-	}).
-	onError(function (err) {
-		console.error("login failed", err);
-	});
-
-// This call will usually be done from an AngularJS view.
-$scope.login("tim", "31337h4x0r");
-```
-
-@param {$rootScope.Scope} scope
-Context in which stream origin function should be registered.
-
-@param {string} expression
-Expression that determines where in `scope` our stream origin function will be
-exposed.
-
-@returns {Bacon.EventStream}
-Returns the created event stream.
-*/
-	this.functionAsStream = function (scope, expression) {
-		var parsed = $parse(expression),
-			fn = parsed(scope);
-
-		if (!angular.isFunction(fn)) {
-			fn = function () {
-				var args = [].slice.call(arguments);
-				fn.streams.forEach(function (send) {
-					send(args);
-				});
-			}
-			fn.streams = [];
-			parsed.assign(scope, fn);
-		}
-
-		return this.createStream(scope, function (next) {
-
-			// Register our "event issuer" to be called every time `fn` is
-			// invoked.
-			fn.streams.push(next);
-
-			return function () {
-				fn.streams.splice(fn.streams.indexOf(next), 1);
-				// TODO: Automatically remove function from scope at some point?
-				// Tricky because we would need a reliable way of detecting when
-				// a function has no more registered non-ended streams. Simply
-				// checking from `fn.streams.length === 0` won't cut it because
-				// it could be that some streams have not yet been activated
-				// (are still lazy).
-			};
-		});
-	};
-
-/**
-@ngdoc method
-@name module:bang.service:bang.scope#digestObservable
-@description
-
-Digests an observable to scope. Note that the supplied observable is not
-subscribed to but is rather extended with a side effect. In order to effectuate
-the digest the returned observable should be captured and subscribed to.
-
-This method is also available on `$rootScope` under the same name, minus the
-`scope` parameter.
-
-```js
-var user = Bacon.fromPromise($http.post('/login', {
-	username: "tim",
-	password: "31337h4x0r"
-}));
-
-user = $scope.digestObservable("loggedInUser", user);
-
-console.log($scope.loggedInUser);
-
-user.subscribe(function (user) {
-	console.log($scope.loggedInUser === user);
-});
-
-// → undefined
-// → true
-```
-
-@param {$rootScope.Scope} scope
-Context in which values from `observable` should be made available.
-
-@param {string} expression
-Expression that determines where in `scope` values from `observable` will be
-exposed.
-
-@param {Bacon.Observable} observable
-The observable that should be amended with the digest logic.
-
-@returns {Bacon.Observable}
-Returns the original observable but extended with the digest logic.
-*/
-	this.digestObservable = function (scope, expression, observable) {
-		var assign = $parse(expression).assign;
-
-		return observable.doAction(function (value) {
-			scope.$evalAsync(function () {
-				assign(scope, value);
-			});
-		});
-	};
-
-}]).
-
-config(['$provide', function ($provide) {
-
-	$provide.decorator('$rootScope', ['$delegate', 'bang.scope', function ($delegate, fns) {
-
-		angular.extend(
-			Object.getPrototypeOf($delegate),
-			Object.keys(fns).reduce(function (decorate, name) {
-
-				decorate[name] = function () {
-					return fns[name].apply(
-						fns, [this].concat([].slice.call(arguments))
-					);
-				};
-				return decorate;
-
-			}, {})
-		);
-
-		return $delegate;
-
-	}]);
-
-}]);
-
-}(window.angular);
-;!function (angular) { 'use strict';
-
-angular.module('bang').
-
-/**
-@ngdoc service
 @name bang.location
 @module bang
 @description
 
 Exposes helper functions to integrate Bacon.js observables with `$location`.
 */
-service('bang.location', ['$location', function ($location) {
+service('bang.location', ['$rootScope', 'Bacon', function ($rootScope, Bacon) {
 
 /**
 @ngdoc method
@@ -509,32 +330,27 @@ value. Receives `$location` as `this`.
 Returns the created property.
 */
 	this.asProperty = function (getValue) {
-		return $location.asProperty(getValue);
+		return Bacon.fromBinder(function (sink) {
+			
+			sink(new Bacon.Initial(getValue()));
+			
+			$rootScope.$on('$locationChangeSuccess', function () {
+				sink(new Bacon.Next(getValue()));
+			});
+			
+		}).skipDuplicates().toProperty();
 	};
 
 }]).
 
 config(['$provide', function ($provide) {
-
-	$provide.decorator('$location', ['$delegate', '$rootScope', function ($delegate, $rootScope) {
-
-		Object.getPrototypeOf($delegate).asProperty = function (getValue) {
-			var $location = this;
-
-			return $rootScope.createProperty(function () {
-
-				return getValue.call($location);
-
-			}, function (next, invalidate) {
-
-				return this.$on('$locationChangeSuccess', invalidate);
-
-			}).skipDuplicates();
-
-		};
-
+	
+	$provide.decorator('$location', ['$delegate', 'bang.location', function ($delegate, bangLocation) {
+		
+		Object.getPrototypeOf($delegate).asProperty = bangLocation.asProperty;
+		
 		return $delegate;
-
+		
 	}]);
 
 }]);
@@ -546,11 +362,11 @@ angular.module('bang').
 
 /**
 @ngdoc service
-@name bang.controller
+@name bang
 @module bang
 @description
 
-Exposes tools for building controllers.
+Exposes tools for building FRP-grade services and controllers.
 
 The following example gives an overview of how the functions in this service can
 be combined to implement powerful and robust asynchronous controller logic that
@@ -558,20 +374,22 @@ can be easily hooked into any kind of view.
 
 ```js
 angular.module('demoModule', ['bang']).controller('demoCtrl', [
-'$scope', '$http', 'Bacon', 'bang.controller',
-function ($scope, $http, Bacon, ctrl) {
+'$scope', '$http', 'Bacon', 'bang',
+function ($scope, $http, Bacon, bang) {
 
-	var collection = ctrl.create($scope, {
+	bang.component($scope, {
 
-		loggedInUser: ctrl.property(function () {
+		loggedInUser: bang.property.digest(function () {
 			return Bacon.fromPromise( $http.get('/me') );
 		}),
 
 		books: {
 		
-			search: ctrl.stream.calls(0),
+			search: bang.stream.function(function (query) {
+				return query;
+			}),
 
-			all: ctrl.property(function () {
+			all: bang.property(function () {
 				return this.books.search.flatMapLatest(function (query) {
 					return Bacon.fromPromise( $http.get('/searchBooks', { q: query }) );
 				});
@@ -579,13 +397,15 @@ function ($scope, $http, Bacon, ctrl) {
 
 		},
 
-		isBusy: ctrl.property(function () {
+		isBusy: bang.property.digest(function () {
 			return this.books.search.awaiting(this.books.all.mapError());
 		}),
 
 		input: {
 			
-			rating: ctrl.property.watch()
+			rating: bang.property.watch(function () {
+				return Bacon.once(0);
+			})
 
 		}
 
@@ -593,7 +413,7 @@ function ($scope, $http, Bacon, ctrl) {
 	// particular example, other than demonstrating how object merging works.
 	}, {
 
-		'books.listed': ctrl.property(function () {
+		'books.listed': bang.property.digest(function () {
 			return Bacon.combineWith(
 				function (books, rating) {
 					return books.filter(function (book) {
@@ -603,7 +423,7 @@ function ($scope, $http, Bacon, ctrl) {
 			);
 		}),
 		
-		deals: ctrl.property(function () {
+		deals: bang.property.digest(function () {
 			return Bacon.combineTemplate({
 				bookIds: this.books.listed.map(function (books) {
 					return books.map(function (book) {
@@ -618,17 +438,6 @@ function ($scope, $http, Bacon, ctrl) {
 		})
 
 	});
-
-	angular.forEach(collection, function (value, key) {
-		console.log(key, value.constructor.name);
-	});
-	// → "loggedInUser" "Property"
-	// → "books.search" "EventStream"
-	// → "books.all" "Property"
-	// → "books.listed" "Property"
-	// → "isBusy" "Property"
-	// → "input.rating" "Property"
-	// → "deals" "Property"
 
 }]);
 ```
@@ -667,21 +476,75 @@ A corresponding view could look as follows:
 </div>
 ```
 */
-service('bang.controller', ['$parse', '$log', 'Bacon', function ($parse, $log, Bacon) {
+service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootScope, $parse, $q, $log, Bacon) {
+	
+	// Circuit type used on service singletons.
+	
+	function Service() {
+		Bacon.Circuit.apply(this, arguments);
+	}
+	Service.prototype = new Bacon.Circuit();
+	Service.prototype.constructor = Service;
+	
+	// Circuit type used on scope instances.
+	
+	function Scope() {
+		Bacon.Circuit.apply(this, arguments);
+	}
+	Scope.prototype = new Bacon.Circuit();
+	Scope.prototype.constructor = Scope;
+	
+	Scope.prototype.get = function (key) {
+		return $parse(key)(this.face);
+	};
+	Scope.prototype.set = function (key, value) {
+		this.face.$evalAsync(function () {
+			$parse(key).assign(this.face, value);
+		}.bind(this));
+		return this;
+	};
+	Scope.prototype.watch = function (key, cb) {
+		this.face.$watch(key, function (to, from) {
+			if (to !== from) cb(to);
+		});
+		return this;
+	};
+	
+	// General component behavior.
+	
+	// Imitate ES6 `Promise` and `Q.Promise`.
+	Service.prototype.promiseConstructor = Scope.prototype.promiseConstructor = function (construct) {
+		var deferred = $q.defer();
+		construct(deferred.resolve, deferred.reject);
+		angular.extend(this, deferred.promise);
+	};
+	
+	Service.prototype.onEvent = Scope.prototype.onEvent = function (key, observable, event) {
+		var eventTypeColor = "SaddleBrown";
+		if (event.isInitial())
+			eventTypeColor = "Peru";
+		if (event.isError())
+			eventTypeColor = "Crimson";
 
+		$log.debug(["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
+			"color: Gray", this.face.$id || this.face,
+			"color: " + eventTypeColor, key,
+			"color: Gray", observable instanceof Bacon.Property ? "=" : "\u2192",
+			event.isError() ? event.error : event.value()
+		);
+	};
+	
 /**
 @ngdoc method
-@name module:bang.service:bang.controller#create
+@name module:bang.service:bang#component
 @description
 
-Creates an integrated collection of observables bound to a scope, ready to power
-any type of view.
+Creates an integrated collection of observables powering an outward facing
+application programming interface. Ready to power either controller view scope
+or service interface.
 
-Automatically digests all instances of type `Bacon.Property` onto the supplied
-scope.
-
-The collection of supplied `factories` will first be transformed into a
-collection of observable instances by assigning each of them onto the (nested)
+The collection of supplied `fields` will first be transformed into a collection
+of observable instances by assigning each of them onto the (nested) object
 property as defined by their field name (flattened object key).
 
 Then each of these observables will be activated by executing their
@@ -690,469 +553,206 @@ specifically: the setup function as supplied upon factory construction will be
 invoked with said collection as `this`, and with corresponding field name and
 scope as arguments.
 
-@param {$rootScope.Scope} scope
-Scope to which the defined observables should be connected.
+Logs all events in each of its observables to debug console for instant insight
+and rapid debugging during development. Note that currently this feature looks
+best in Google Chrome and Safari. Messages are outputted via `$log.debug()`,
+which means they can be disabled using the `$logProvider.debugEnabled()` flag.
 
-@param {Object.<string, (Factory|Object)>} factories
+@param {Object|$rootScope.Scope} face
+Object onto which public interface of component should be constructed, which can
+be a scope in case of a controller component.
+
+@param {Object.<string, (Bacon.Field|Object)>} fields
 Object with stream and property factories, indexed by their names. Objects may
 be nested.
 
-Multiple `factories` objects can be specified, all of which will be flattened
-and then merged into a single one-dimensional map of key–value pairs.
+Multiple `fields` objects can be specified, all of which will be flattened and
+then merged into a single one-dimensional map of key–value pairs.
 
-@returns {Object.<string, Bacon.Observable>}
-Returns the merged, flattened and activated collection of observables.
+@returns {Bacon.Circuit}
+Returns the constructed component.
 */
-	this.create = function (scope) {
+	this.component = function (face) {
 		var fields = [].slice.call(arguments, 1);
-
-		fields = angular.extend.apply(angular, [{}].concat(
-			flattenArray(fields).map(function (field) {
-				return unnestKeys(field);
-			})
-		));
-
-		var context = {};
-
-		angular.forEach(fields, function (field, name) {
-			if (field instanceof Factory)
-				$parse(name).assign(context, field.get());
-		});
-
-		angular.forEach(fields, function (field, name) {
-			if (field instanceof PropertyFactory)
-				field.chain(function (me) {
-					return scope.digestObservable(name, me);
-				});
-			if (field instanceof Factory)
-				field.deploy(context, name, scope);
-		});
-
-		angular.forEach(fields, function (field, name) {
-			if (field instanceof Factory)
-				field.get().subscribe(function (event) {
-
-					var eventTypeColor = "SaddleBrown";
-					if (event.isInitial())
-						eventTypeColor = "Peru";
-					if (event.isError())
-						eventTypeColor = "Crimson";
-
-					$log.debug(["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
-						"color: Gray", scope.$id,
-						"color: " + eventTypeColor, name,
-						"color: Gray", field instanceof PropertyFactory ? "=" : "\u2192",
-						event.isError() ? event.error : event.value()
-					);
-
-				});
-		});
-
-		return context;
+		
+		if (face instanceof $rootScope.constructor)
+			return new Scope(face, fields);
+		
+		return new Service(face, fields);
 	};
-
-	function unnestKeys (obj, path) {
-		path = path || [];
-		var flat = {};
-		angular.forEach(obj, function (value, key) {
-			var thisPath = path.concat([key]);
-			if (value instanceof Factory)
-				flat[thisPath.join('.')] = value;
-			else
-				angular.extend(flat, unnestKeys(value, thisPath));
-		});
-		return flat;
-	}
-
-	function flattenArray (array) {
-		var flat = [];
-		array.forEach(function (item) {
-			if (angular.isArray(item))
-				flat.push.apply(flat, flattenArray(item));
-			else
-				flat.push(item);
-		});
-		return flat;
-	}
 	
 /**
 @ngdoc method
-@name module:bang.service:bang.controller#stream
+@name module:bang.service:bang#stream
 @description
 
-Creates a stream factory; an object from which an observable of type
+Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
 
-@param {function(stream, name, scope)} init
+@param {function(name, component)} setup
 Initialization function that defines stream dependencies and behavior. Should
 return an observable from which the eventual event stream will be instantiated.
-The values of `this`, `name` and `scope` are determined upon observable
-activation.
+The values of `this`, `name` and `component` are determined upon activation
+(i.e. calling `field.start(context, name, component)`).
 
-If factory is constructed and activated in the context of `create()`, `this`
-will equal the collection of observables, and the `name` and `scope` arguments
-will be the corresponding field name (flattened object key) and controller scope
-respectively. The value of `stream` will be the current stream, which will
-always be an empty stream upon initialization.
+If field is constructed and activated in the context of `bang.component()`,
+`this` will equal the collection of observables, and the `name` and `component`
+arguments will be the corresponding field name (flattened object key) and
+component (`Bacon.Circuit` instance) respectively.
 
-@returns {Factory}
-Returns the constructed stream factory.
+@returns {Bacon.Field}
+Returns the constructed stream field.
 */
-	this.stream = function (init) {
-
-		return new StreamFactory(init);
-
-	};
 
 /**
 @ngdoc method
-@name module:bang.service:bang.controller#stream.calls
+@name module:bang.service:bang#stream.expose
 @description
 
-Creates a stream factory; an object from which an observable of type
+Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
 
-Upon stream activation a function will be made available on the supplied scope
-at the supplied field name. Every invocation of this function will result in an
-event in the created event stream.
+Resulting observable will be exposed on the outward facing interface object
+(`face`) represented by the component and field name as supplied on stream
+activation.
 
-@param {number=} arg
-Determines which of the function call arguments is passed on as event value in
-the event stream. If not specified, the full arguments array will make up the
-event value.
+@param {function(name, component)} setup
+Initialization function that defines stream dependencies and behavior. Should
+return an observable from which the eventual event stream will be instantiated.
+The values of `this`, `name` and `component` are determined upon activation
+(i.e. calling `field.start(context, name, component)`).
 
-@returns {Factory}
-Returns the constructed stream factory.
+If field is constructed and activated in the context of `bang.component()`,
+`this` will equal the collection of observables, and the `name` and `component`
+arguments will be the corresponding field name (flattened object key) and
+component (`Bacon.Circuit` instance) respectively.
+
+@returns {Bacon.Field}
+Returns the constructed stream field.
 */
-	this.stream.calls = function (arg) {
-
-		return this(function (me, name, scope) {
-			var stream = scope.functionAsStream(name);
-			if (arg !== undefined)
-				stream = stream.map('.' + arg);
-			return stream;
-		});
-
-	};
 
 /**
 @ngdoc method
-@name module:bang.service:bang.controller#property
+@name module:bang.service:bang#stream.function
 @description
 
-Creates a property factory; an object from which an observable of type
+Creates a stream field; an object from which an observable of type
+`Bacon.EventStream` can be instantiated and initialized.
+
+Upon stream activation a function will be made available on the outward facing
+interface object (`face`) represented by the component and field name as
+supplied on property activation. Every invocation of this function will result
+in an event in the created event stream.
+
+@param {function(...arguments)=} flatMapLatest
+Determines how the function call arguments map (or more precisely:
+flat-map-latest) to events in the resulting event stream. If not specified, the
+full `arguments` object will make up the event value.
+
+@returns {Bacon.Field}
+Returns the constructed stream field.
+*/
+	this.stream = Bacon.Field.stream;
+	
+/**
+@ngdoc method
+@name module:bang.service:bang#property
+@description
+
+Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
 
-@param {function(stream, name, scope)} init
+@param {function(name, component)} setup
 Initialization function that defines property dependencies and behavior. Should
 return an observable from which the eventual property stream will be
-instantiated. The values of `this`, `name` and `scope` are determined upon
-observable activation.
+instantiated. The values of `this`, `name` and `component` are determined upon
+activation (i.e. calling `field.start(context, name, component)`).
 
-If factory is constructed and activated in the context of `create()`, `this`
-will equal the collection of observables, and the `name` and `scope` arguments
-will be the corresponding field name (flattened object key) and controller scope
-respectively. The value of `stream` will be the current stream, which will
-always be an empty stream upon initialization.
+If field is constructed and activated in the context of `bang.component()`,
+`this` will equal the collection of observables, and the `name` and `component`
+arguments will be the corresponding field name (flattened object key) and
+component (`Bacon.Circuit` instance) respectively.
 
-@returns {Factory}
-Returns the constructed property factory.
+@returns {Bacon.Field}
+Returns the constructed property field.
 */
-	this.property = function (init) {
-
-		return new PropertyFactory(init);
-
-	};
 
 /**
 @ngdoc method
-@name module:bang.service:bang.controller#property.watch
+@name module:bang.service:bang#property.expose
 @description
 
-Creates a property factory; an object from which an observable of type
+Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
 
-Events of this property reflect value changes of the scope variable as defined
-by the scope and field name that are supplied upon property activation. Note
-that initial scope variable value (if any) is ignored by default, as to make
-room for initial values from other sources (provided via `merge`).
+Resulting observable will be exposed on the outward facing interface object
+(`face`) represented by the component and field name as supplied on property
+activation.
+
+@param {function(name, component)} setup
+Initialization function that defines property dependencies and behavior. Should
+return an observable from which the eventual property stream will be
+instantiated. The values of `this`, `name` and `component` are determined upon
+activation (i.e. calling `field.start(context, name, component)`).
+
+If field is constructed and activated in the context of `bang.component()`,
+`this` will equal the collection of observables, and the `name` and `component`
+arguments will be the corresponding field name (flattened object key) and
+component (`Bacon.Circuit` instance) respectively.
+
+@returns {Bacon.Field}
+Returns the constructed property field.
+*/
+
+/**
+@ngdoc method
+@name module:bang.service:bang#property.digest
+@description
+
+Creates a property field; an object from which an observable of type
+`Bacon.Property` can be instantiated and initialized.
+
+Every value of resulting observable will be assigned to outward facing interface
+object (`face`) represented by the component and field name as supplied on
+property activation.
+
+@param {function(name, component)} setup
+Initialization function that defines property dependencies and behavior. Should
+return an observable from which the eventual property stream will be
+instantiated. The values of `this`, `name` and `component` are determined upon
+activation (i.e. calling `field.start(context, name, component)`).
+
+If field is constructed and activated in the context of `bang.component()`,
+`this` will equal the collection of observables, and the `name` and `component`
+arguments will be the corresponding field name (flattened object key) and
+component (`Bacon.Circuit` instance) respectively.
+
+@returns {Bacon.Field}
+Returns the constructed property field.
+*/
+
+/**
+@ngdoc method
+@name module:bang.service:bang#property.watch
+@description
+
+Creates a property field; an object from which an observable of type
+`Bacon.Property` can be instantiated and initialized.
+
+Events of this property reflect changes of value on the outward facing interface
+object (`face`) represented by the component and field name as supplied on
+property activation. Note that initial scope variable value (if any) is ignored
+by default, as to make room for initial values from other sources (provided via
+`merge`).
 
 @param {function()=} merge
 Should return an observable which will be merged into the event stream that
-watches the scope variable. Can be used to define an initial value.
+watches the interface variable. Can be used to define an initial value.
 
-@returns {Factory}
-Returns the constructed property factory.
+@returns {Bacon.Field}
+Returns the constructed property field.
 */
-	this.property.watch = function (merge) {
-
-		return this(function (me, name, scope) {
-			var stream = scope.watchAsProperty(name).changes();
-			if (angular.isFunction(merge))
-				stream = Bacon.mergeAll(stream, merge.call(this));
-			return stream;
-		});
-
-	};
-
-	function Factory () {}
-
-	function StreamFactory (init) {
-		var chain = [];
-		this.chain = function (fn) {
-			if (fn) chain.push(fn);
-			return this;
-		};
-
-		this.chain(init);
-
-		var bus = new Bacon.Bus();
-
-		var get = bus.toProperty().toEventStream();
-		this.get = function () {
-			return get;
-		};
-
-		this.deploy = function (context, name, scope) {
-			var chained = chain.reduce(function (observable, fn) {
-
-				var result = fn.call(context, observable, name, scope);
-
-				// TODO: Support more non-EventStream types?
-				if (result instanceof Bacon.Bus)
-					result = result.toProperty();
-				if (result instanceof Bacon.Property)
-					result = result.toEventStream();
-
-				return result instanceof Bacon.EventStream ? result : observable;
-
-			}, Bacon.never());
-
-			bus.plug(chained);
-
-			delete this.deploy;
-
-			return this;
-		};
-	}
-	StreamFactory.prototype = new Factory();
-	StreamFactory.prototype.constructor = StreamFactory;
-
-	function PropertyFactory (init) {
-		var chain = [];
-		this.chain = function (fn) {
-			if (fn) chain.push(fn);
-			return this;
-		};
-
-		this.chain(init);
-
-		var bus = new Bacon.Bus();
-
-		var get = bus.toProperty();
-		this.get = function () {
-			return get;
-		};
-
-		this.deploy = function (context, name, scope) {
-			var chained = chain.reduce(function (observable, fn) {
-
-				var result = fn.call(context, observable, name, scope);
-
-				// TODO: Support more non-EventStream types?
-				if (result instanceof Bacon.Bus)
-					result = result.toProperty();
-				if (result instanceof Bacon.Property)
-					result = result.toEventStream();
-
-				return result instanceof Bacon.EventStream ? result : observable;
-
-			}, Bacon.never());
-
-			bus.plug(chained);
-
-			delete this.deploy;
-
-			return this;
-		};
-	}
-	PropertyFactory.prototype = new Factory();
-	PropertyFactory.prototype.constructor = PropertyFactory;
-
-}]);
-
-}(window.angular);
-;!function (angular) { 'use strict';
-
-angular.module('bang').
-
-service('bang', ['$parse', '$q', '$log', 'Bacon', function ($parse, $q, $log, Bacon) {
-	
-	this.create = function (external) {
-		var fields = [].slice.call(arguments, 1);
-
-		fields = angular.extend.apply(angular, [{}].concat(
-			flattenArray(fields).map(function (field) {
-				return unnestKeys(field);
-			})
-		));
-
-		var internal = {};
-
-		angular.forEach(fields, function (field, name) {
-			if (field instanceof Factory)
-				$parse(name).assign(internal, field.observable());
-		});
-
-		angular.forEach(fields, function (field, name) {
-			if (field instanceof Factory)
-				field.start(internal, name, external);
-		});
-
-		angular.forEach(fields, function (field, name) {
-			if (field instanceof Factory)
-				field.observable().subscribe(function (event) {
-
-					var eventTypeColor = "SaddleBrown";
-					if (event.isInitial())
-						eventTypeColor = "Peru";
-					if (event.isError())
-						eventTypeColor = "Crimson";
-
-					$log.debug(["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
-						"color: Gray", external.$id || external,
-						"color: " + eventTypeColor, name,
-						"color: Gray", "=", //field instanceof PropertyFactory ? "=" : "\u2192",
-						event.isError() ? event.error : event.value()
-					);
-
-				});
-		});
-
-		return internal;
-	};
-
-	function unnestKeys (obj, path) {
-		path = path || [];
-		var flat = {};
-		angular.forEach(obj, function (value, key) {
-			var thisPath = path.concat([key]);
-			if (value instanceof Factory)
-				flat[thisPath.join('.')] = value;
-			else
-				angular.extend(flat, unnestKeys(value, thisPath));
-		});
-		return flat;
-	}
-
-	function flattenArray (array) {
-		var flat = [];
-		array.forEach(function (item) {
-			if (angular.isArray(item))
-				flat.push.apply(flat, flattenArray(item));
-			else
-				flat.push(item);
-		});
-		return flat;
-	}
-	
-	this.stream = function (setup) {
-		return new Factory(setup, Bacon.EventStream);
-	};
-	
-	this.stream.expose = function (setup) {
-		var factory = this(function (name, external) {
-			$parse(name).assign(external, factory.observable());
-			return setup.apply(this, arguments);
-		});
-		return factory;
-	};
-	
-	this.stream.function = function (flatMapLatest) {
-		return this(function (name, external) {
-			var bus = new Bacon.Bus();
-			$parse(name).assign(external, function () {
-				var args = arguments;
-				// TODO: Can we make `.firstToPromise()` work with `$q`?
-				return $q(function (resolve, reject) {
-					// TODO: Unplug at any point in time??
-					bus.plug(
-						Bacon.once(true).flatMapLatest(function () {
-							return flatMapLatest.apply(this, args);
-						}).doAction(resolve).doError(reject)
-					);
-				});
-			});
-			return bus;
-		});
-	};
-	
-	this.property = function (setup) {
-		return new Factory(setup, Bacon.Property);
-	};
-	
-	this.property.expose = function (setup) {
-		var factory = this(function (name, external) {
-			$parse(name).assign(external, factory.observable());
-			return setup.apply(this, arguments);
-		});
-		return factory;
-	};
-	
-	this.property.digest = function (setup) {
-		return this(function (name, external) {
-			var assign = $parse(name).assign;
-			return setup.apply(this, arguments).doAction(function (value) {
-				if (angular.isFunction(external.$evalAsync))
-					external.$evalAsync(function () {
-						assign(external, value);
-					});
-				else
-					assign(external, value);
-			});
-		});
-	};
-	
-	this.property.watch = function (merge) {
-		return this.digest(function (name, external) {
-			return Bacon.mergeAll(
-				Bacon.fromBinder(function (sink) {
-					if (angular.isFunction(external.$watch))
-						external.$watch(name, function (value) {
-							sink(new Bacon.Next(value));
-						});
-				}).skipDuplicates().skip(1),
-				merge.call(this)
-			).skipDuplicates();
-		});
-	};
-	
-	function Factory(setup, Type) {
-		var bus = new Bacon.Bus();
-		
-		var observable = bus.toProperty();
-		if (Type === Bacon.EventStream) 
-			observable = observable.toEventStream();
-		
-		this.observable = function () {
-			return observable;
-		};
-		
-		this.start = function (internal, name, external) {
-			var result = setup.call(internal, name, external);
-			
-			if (result instanceof Bacon.Bus)
-				result = result.toProperty();
-			if (result instanceof Bacon.Property)
-				result = result.toEventStream();
-			if (result instanceof Bacon.EventStream)
-				bus.plug(result);
-			
-			delete this.start;
-			
-			return this;
-		};
-	}
+	this.property = Bacon.Field.property;
 	
 }]);
 

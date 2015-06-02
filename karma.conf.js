@@ -19,18 +19,15 @@ module.exports = function(config) {
 			'node_modules/angular-mocks/angular-mocks.js',
 			
 			'node_modules/baconjs/dist/Bacon.js',
+			'node_modules/bacon.circuit/dist/bacon.circuit.js',
 			
 			'node_modules/lodash/index.js',
 
 			'src/core.js',
-			'src/bacon.js',
-			'src/scope.js',
 			'src/location.js',
-			'src/controller.js',
+			'src/bang.js',
 			
-			'test/scope.js',
-			'test/location.js',
-			'test/controller.js'
+			'test/location.js'
 		],
 
 

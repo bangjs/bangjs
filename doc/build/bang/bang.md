@@ -1,12 +1,5 @@
-;!function (angular) { 'use strict';
-
-angular.module('bang').
-
-/**
-@ngdoc service
-@name bang
-@module bang
-@description
+Module [`bang`](index.md) :boom:
+# Service `bang`
 
 Exposes tools for building FRP-grade services and controllers.
 
@@ -117,69 +110,22 @@ A corresponding view could look as follows:
   </ul>
 </div>
 ```
-*/
-service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootScope, $parse, $q, $log, Bacon) {
-	
-	// Circuit type used on service singletons.
-	
-	function Service() {
-		Bacon.Circuit.apply(this, arguments);
-	}
-	Service.prototype = new Bacon.Circuit();
-	Service.prototype.constructor = Service;
-	
-	// Circuit type used on scope instances.
-	
-	function Scope() {
-		Bacon.Circuit.apply(this, arguments);
-	}
-	Scope.prototype = new Bacon.Circuit();
-	Scope.prototype.constructor = Scope;
-	
-	Scope.prototype.get = function (key) {
-		return $parse(key)(this.face);
-	};
-	Scope.prototype.set = function (key, value) {
-		this.face.$evalAsync(function () {
-			$parse(key).assign(this.face, value);
-		}.bind(this));
-		return this;
-	};
-	Scope.prototype.watch = function (key, cb) {
-		this.face.$watch(key, function (to, from) {
-			if (to !== from) cb(to);
-		});
-		return this;
-	};
-	
-	// General component behavior.
-	
-	// Imitate ES6 `Promise` and `Q.Promise`.
-	Service.prototype.promiseConstructor = Scope.prototype.promiseConstructor = function (construct) {
-		var deferred = $q.defer();
-		construct(deferred.resolve, deferred.reject);
-		angular.extend(this, deferred.promise);
-	};
-	
-	Service.prototype.onEvent = Scope.prototype.onEvent = function (key, observable, event) {
-		var eventTypeColor = "SaddleBrown";
-		if (event.isInitial())
-			eventTypeColor = "Peru";
-		if (event.isError())
-			eventTypeColor = "Crimson";
 
-		$log.debug(["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
-			"color: Gray", this.face.$id || this.face,
-			"color: " + eventTypeColor, key,
-			"color: Gray", observable instanceof Bacon.Property ? "=" : "\u2192",
-			event.isError() ? event.error : event.value()
-		);
-	};
-	
-/**
-@ngdoc method
-@name module:bang.service:bang#component
-@description
+### Index
+
+* [`component`](#componentface-fields)
+* [`stream`](#streamsetup)
+* [`stream.expose`](#streamexposesetup)
+* [`stream.function`](#streamfunctionflatmaplatest)
+* [`property`](#propertysetup)
+* [`property.expose`](#propertyexposesetup)
+* [`property.digest`](#propertydigestsetup)
+* [`property.watch`](#propertywatchmerge)
+
+
+## component(face, fields)
+
+:octocat: [`src/bang.js#L179`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L179)
 
 Creates an integrated collection of observables powering an outward facing
 application programming interface. Ready to power either controller view scope
@@ -200,38 +146,32 @@ and rapid debugging during development. Note that currently this feature looks
 best in Google Chrome and Safari. Messages are outputted via `$log.debug()`,
 which means they can be disabled using the `$logProvider.debugEnabled()` flag.
 
-@param {Object|$rootScope.Scope} face
+:baby_bottle:  **face** _Object|$rootScope.Scope_
+
 Object onto which public interface of component should be constructed, which can
 be a scope in case of a controller component.
 
-@param {Object.<string, (Bacon.Field|Object)>} fields
+:baby_bottle:  **fields** _Object.&lt;string, (Bacon.Field|Object)&gt;_
+
 Object with stream and property factories, indexed by their names. Objects may
 be nested.
 
 Multiple `fields` objects can be specified, all of which will be flattened and
 then merged into a single one-dimensional map of key–value pairs.
 
-@returns {Bacon.Circuit}
+:dash: _Bacon.Circuit_
+
 Returns the constructed component.
-*/
-	this.component = function (face) {
-		var fields = [].slice.call(arguments, 1);
-		
-		if (face instanceof $rootScope.constructor)
-			return new Scope(face, fields);
-		
-		return new Service(face, fields);
-	};
-	
-/**
-@ngdoc method
-@name module:bang.service:bang#stream
-@description
+
+## stream(setup)
+
+:octocat: [`src/bang.js#L226`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L226)
 
 Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
 
-@param {function(name, component)} setup
+:baby_bottle:  **setup** _function(name, component)_
+
 Initialization function that defines stream dependencies and behavior. Should
 return an observable from which the eventual event stream will be instantiated.
 The values of `this`, `name` and `component` are determined upon activation
@@ -242,14 +182,13 @@ If field is constructed and activated in the context of `bang.component()`,
 arguments will be the corresponding field name (flattened object key) and
 component (`Bacon.Circuit` instance) respectively.
 
-@returns {Bacon.Field}
-Returns the constructed stream field.
-*/
+:dash: _Bacon.Field_
 
-/**
-@ngdoc method
-@name module:bang.service:bang#stream.expose
-@description
+Returns the constructed stream field.
+
+## stream.expose(setup)
+
+:octocat: [`src/bang.js#L249`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L249)
 
 Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -258,7 +197,8 @@ Resulting observable will be exposed on the outward facing interface object
 (`face`) represented by the component and field name as supplied on stream
 activation.
 
-@param {function(name, component)} setup
+:baby_bottle:  **setup** _function(name, component)_
+
 Initialization function that defines stream dependencies and behavior. Should
 return an observable from which the eventual event stream will be instantiated.
 The values of `this`, `name` and `component` are determined upon activation
@@ -269,14 +209,13 @@ If field is constructed and activated in the context of `bang.component()`,
 arguments will be the corresponding field name (flattened object key) and
 component (`Bacon.Circuit` instance) respectively.
 
-@returns {Bacon.Field}
-Returns the constructed stream field.
-*/
+:dash: _Bacon.Field_
 
-/**
-@ngdoc method
-@name module:bang.service:bang#stream.function
-@description
+Returns the constructed stream field.
+
+## stream.function([flatMapLatest])
+
+:octocat: [`src/bang.js#L276`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L276)
 
 Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -286,25 +225,25 @@ interface object (`face`) represented by the component and field name as
 supplied on property activation. Every invocation of this function will result
 in an event in the created event stream.
 
-@param {function(...arguments)=} flatMapLatest
+:baby_bottle: optional **flatMapLatest** _function(...arguments)_
+
 Determines how the function call arguments map (or more precisely:
 flat-map-latest) to events in the resulting event stream. If not specified, the
 full `arguments` object will make up the event value.
 
-@returns {Bacon.Field}
+:dash: _Bacon.Field_
+
 Returns the constructed stream field.
-*/
-	this.stream = Bacon.Field.stream;
-	
-/**
-@ngdoc method
-@name module:bang.service:bang#property
-@description
+
+## property(setup)
+
+:octocat: [`src/bang.js#L299`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L299)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
 
-@param {function(name, component)} setup
+:baby_bottle:  **setup** _function(name, component)_
+
 Initialization function that defines property dependencies and behavior. Should
 return an observable from which the eventual property stream will be
 instantiated. The values of `this`, `name` and `component` are determined upon
@@ -315,14 +254,13 @@ If field is constructed and activated in the context of `bang.component()`,
 arguments will be the corresponding field name (flattened object key) and
 component (`Bacon.Circuit` instance) respectively.
 
-@returns {Bacon.Field}
-Returns the constructed property field.
-*/
+:dash: _Bacon.Field_
 
-/**
-@ngdoc method
-@name module:bang.service:bang#property.expose
-@description
+Returns the constructed property field.
+
+## property.expose(setup)
+
+:octocat: [`src/bang.js#L322`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L322)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -331,7 +269,8 @@ Resulting observable will be exposed on the outward facing interface object
 (`face`) represented by the component and field name as supplied on property
 activation.
 
-@param {function(name, component)} setup
+:baby_bottle:  **setup** _function(name, component)_
+
 Initialization function that defines property dependencies and behavior. Should
 return an observable from which the eventual property stream will be
 instantiated. The values of `this`, `name` and `component` are determined upon
@@ -342,14 +281,13 @@ If field is constructed and activated in the context of `bang.component()`,
 arguments will be the corresponding field name (flattened object key) and
 component (`Bacon.Circuit` instance) respectively.
 
-@returns {Bacon.Field}
-Returns the constructed property field.
-*/
+:dash: _Bacon.Field_
 
-/**
-@ngdoc method
-@name module:bang.service:bang#property.digest
-@description
+Returns the constructed property field.
+
+## property.digest(setup)
+
+:octocat: [`src/bang.js#L349`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L349)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -358,7 +296,8 @@ Every value of resulting observable will be assigned to outward facing interface
 object (`face`) represented by the component and field name as supplied on
 property activation.
 
-@param {function(name, component)} setup
+:baby_bottle:  **setup** _function(name, component)_
+
 Initialization function that defines property dependencies and behavior. Should
 return an observable from which the eventual property stream will be
 instantiated. The values of `this`, `name` and `component` are determined upon
@@ -369,14 +308,13 @@ If field is constructed and activated in the context of `bang.component()`,
 arguments will be the corresponding field name (flattened object key) and
 component (`Bacon.Circuit` instance) respectively.
 
-@returns {Bacon.Field}
-Returns the constructed property field.
-*/
+:dash: _Bacon.Field_
 
-/**
-@ngdoc method
-@name module:bang.service:bang#property.watch
-@description
+Returns the constructed property field.
+
+## property.watch([merge])
+
+:octocat: [`src/bang.js#L376`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L376)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -387,15 +325,12 @@ property activation. Note that initial scope variable value (if any) is ignored
 by default, as to make room for initial values from other sources (provided via
 `merge`).
 
-@param {function()=} merge
+:baby_bottle: optional **merge** _function()_
+
 Should return an observable which will be merged into the event stream that
 watches the interface variable. Can be used to define an initial value.
 
-@returns {Bacon.Field}
-Returns the constructed property field.
-*/
-	this.property = Bacon.Field.property;
-	
-}]);
+:dash: _Bacon.Field_
 
-}(window.angular);
+Returns the constructed property field.
+
