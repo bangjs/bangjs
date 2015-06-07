@@ -25,7 +25,7 @@ This method is also available on `$location` under the same name.
 var isLoggedIn = false;
 
 var path = $location.asProperty(function () {
-	return this.path();
+	return $location.path();
 }).doAction(function (value) {
 	if (isLoggedIn) return;
 
@@ -48,7 +48,7 @@ path.onValue(function (value) {
 
 @param {function()} getValue
 Function that will be called every time the property needs to know its current
-value. Receives `$location` as `this`.
+value.
 
 @returns {Bacon.Property}
 Returns the created property.

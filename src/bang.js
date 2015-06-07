@@ -128,6 +128,10 @@ service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootS
 	Service.prototype = new Bacon.Circuit();
 	Service.prototype.constructor = Service;
 	
+	Service.prototype.toString = function () {
+		return this.face.constructor.name;
+	};
+	
 	// Circuit type used on scope instances.
 	
 	function Scope() {
@@ -136,6 +140,9 @@ service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootS
 	Scope.prototype = new Bacon.Circuit();
 	Scope.prototype.constructor = Scope;
 	
+	Scope.prototype.toString = function () {
+		return "Scope:" + this.face.$id;
+	};
 	Scope.prototype.get = function (key) {
 		return $parse(key)(this.face);
 	};
@@ -154,22 +161,23 @@ service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootS
 	
 	// General component behavior.
 	
-	// Imitate ES6 `Promise` and `Q.Promise`.
-	Service.prototype.promiseConstructor = Scope.prototype.promiseConstructor = function (construct) {
-		var deferred = $q.defer();
-		construct(deferred.resolve, deferred.reject);
-		angular.extend(this, deferred.promise);
-	};
+	var promiseConstructor = $q;
+	if (!angular.isFunction(promiseConstructor))
+		// Imitate ES6 `Promise` and `Q.Promise` constructor interface for Angular 1.2.
+		promiseConstructor = function (resolver) {
+			var deferred = $q.defer();
+			resolver(deferred.resolve, deferred.reject);
+			angular.extend(this, deferred.promise);
+		};
+	Service.prototype.promiseConstructor = Scope.prototype.promiseConstructor = promiseConstructor;
 	
 	Service.prototype.onEvent = Scope.prototype.onEvent = function (key, observable, event) {
 		var eventTypeColor = "SaddleBrown";
-		if (event.isInitial())
-			eventTypeColor = "Peru";
 		if (event.isError())
 			eventTypeColor = "Crimson";
 
 		$log.debug(["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
-			"color: Gray", this.face.$id || this.face,
+			"color: Gray", this.toString(),
 			"color: " + eventTypeColor, key,
 			"color: Gray", observable instanceof Bacon.Property ? "=" : "\u2192",
 			event.isError() ? event.error : event.value()

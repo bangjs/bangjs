@@ -1,11 +1,8 @@
-// Karma configuration
-// Generated on Wed Feb 25 2015 12:06:19 GMT+0100 (CET)
-
-module.exports = function(config) {
+module.exports = function (config, angularVersion) {
 	config.set({
 
 		// base path that will be used to resolve all patterns (eg. files, exclude)
-		basePath: '',
+		basePath: '../..',
 
 
 		// frameworks to use
@@ -15,8 +12,8 @@ module.exports = function(config) {
 
 		// list of files / patterns to load in the browser
 		files: [
-			'node_modules/angular/angular.js',
-			'node_modules/angular-mocks/angular-mocks.js',
+			'http://ajax.googleapis.com/ajax/libs/angularjs/' + angularVersion + '/angular.js',
+			'http://ajax.googleapis.com/ajax/libs/angularjs/' + angularVersion + '/angular-mocks.js',
 			
 			'node_modules/baconjs/dist/Bacon.js',
 			'node_modules/bacon.circuit/dist/bacon.circuit.js',
@@ -27,7 +24,8 @@ module.exports = function(config) {
 			'src/location.js',
 			'src/bang.js',
 			
-			'test/location.js'
+			'test/location.js',
+			'test/bang.js'
 		],
 
 

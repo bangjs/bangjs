@@ -3,7 +3,10 @@
   "version": "0.2.0",
   "description": "Bacon-flavored Angular",
   "scripts": {
-    "test": "./node_modules/karma/bin/karma start",
+    "test": "npm run test-angular1_4",
+    "test-angular1_4": "./node_modules/karma/bin/karma start test/karma/angular1_4.conf.js",
+    "test-angular1_3": "./node_modules/karma/bin/karma start test/karma/angular1_3.conf.js",
+    "test-angular1_2": "./node_modules/karma/bin/karma start test/karma/angular1_2.conf.js",
     "build": "gulp"
   },
   "repository": {
@@ -25,10 +28,8 @@
   },
   "homepage": "http://bangjs.org",
   "devDependencies": {
-    "angular": "^1.4.0",
-    "angular-mocks": "^1.4.0",
     "bacon.circuit": "^0.1.3",
-    "baconjs": "^0.7.61",
+    "baconjs": "~0.7.64",
     "dgeni": "^0.4.1",
     "dgeni-packages": "^0.10.13",
     "gulp": "^3.8.11",

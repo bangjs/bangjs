@@ -22,7 +22,7 @@ gulp.task('doc', function () {
 
 	// TODO: Clean out previous build before generating new one.
 	
-	return new Dgeni([require('./dgeni.conf')]).generate();
+	return new Dgeni([require('./doc/dgeni.conf')]).generate();
 
 });
 

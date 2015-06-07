@@ -4,7 +4,7 @@ Bacon-flavored Angular :boom:
 
 ## Overview
 
-Program watertight web app user interface behavior with [AngularJS](https://angularjs.org/) and [Bacon.js](https://baconjs.github.io/).
+Program watertight web-based user interface behavior with [AngularJS](https://angularjs.org/) and [Bacon.js](https://baconjs.github.io/).
 
 Enjoy everything that’s good about [functional reactive programming](https://gist.github.com/staltz/868e7e9bc2a7b8c1f754) with all the benefits of a mature and vibrant front-end framework ecosystem.
 
@@ -34,7 +34,7 @@ Concise and compliant implementation of the [TodoMVC](http://todomvc.com/) bench
 
 BangJS was created by [Tim Molendijk](https://twitter.com/timmolendijk) using [Bacon.Circuit](https://github.com/bangjs/bacon.circuit/). It is currently in production use at [Nouncy](http://nouncy.com/).
 
-Contributions are welcomed. Feel free to [email me](https://github.com/bangjs/bangjs/blob/master/package.json#L21) or send in an issue or pull request.
+Contributions are welcomed. Feel free to [email me](https://github.com/bangjs/bangjs/blob/master/package.json#L24) or send in an issue or pull request.
 
 * [Home page](http://bangjs.org/)
 * [Release history](https://github.com/bangjs/bangjs/blob/master/CHANGES.md)
