@@ -1,7 +1,7 @@
 {
   "name": "bangjs",
-  "version": "0.2.1",
-  "description": "Bacon-flavored Angular",
+  "version": "0.3.0",
+  "description": "Reactive Angular",
   "main": "dist/bang.js",
   "scripts": {
     "test": "npm run test-angular1_4",

@@ -1,3 +1,12 @@
+### 0.3.0 :dizzy:
+_Tuesday 7 July 2015_
+
+* Update to use Bacon.Circuit v0.2.0.
+* Adjust corresponding parts of our API and docs accordingly.
+* Scopes can be assigned a name to be used by debug logger.
+* Debug logger can deal with events of type `Bacon.End`.
+
+
 ### 0.2.1 :sparkles:
 _Sunday 7 June 2015_
 

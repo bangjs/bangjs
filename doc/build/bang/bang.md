@@ -59,7 +59,7 @@ function ($scope, $http, Bacon, bang) {
 			);
 		}),
 		
-		deals: bang.property.digest(function () {
+		deals: bang.property.digest(function (sink) {
 			// This field could be implemented similar to the previous,
 			// combining listed books and user country, but we could also opt
 			// for a more traditional approach as follows. (But also notice how
