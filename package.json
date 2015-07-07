@@ -1,6 +1,6 @@
 {
   "name": "bangjs",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Bacon-flavored Angular",
   "main": "dist/bang.js",
   "scripts": {
