@@ -1,6 +1,10 @@
-if (typeof exports === 'object')
-	Bacon = require('baconjs');
-;!function () { 'use strict';
+;!function (root, factory) {
+	if (typeof exports === 'object')
+		module.exports = factory(require('baconjs'));
+	else
+		factory(root.Bacon);
+}(this, function (Bacon) {
+'use strict';
 
 function Circuit(face) {
 	// Calling without arguments can be done if we want to skip initialization
@@ -18,7 +22,7 @@ function Circuit(face) {
 		return unnestKeys(fieldsObj);
 	}).forEach(function (fieldsObj) {
 		Object.keys(fieldsObj).forEach(function (key) {
-			if (fieldsObj[key] instanceof Bacon.Field)
+			if (fieldsObj[key] instanceof Bacon.Circuit.Field)
 				fields[key] = fieldsObj[key];
 		});
 	});
@@ -34,13 +38,13 @@ function Circuit(face) {
 	});
 	
 	keys.forEach(function (key) {
-		fields[key].start(context, key, circuit);
-	});
-	
-	keys.forEach(function (key) {
 		fields[key].observable().subscribe(function (event) {
 			circuit.onEvent(key, fields[key].observable(), event);
 		});
+	});
+
+	keys.forEach(function (key) {
+		fields[key].start(context, key, circuit);
 	});
 }
 
@@ -118,7 +122,7 @@ function unnestKeys(obj, path) {
 		var keyPath = path.slice();
 		keyPath.push(key);
 		
-		if (obj[key] instanceof Bacon.Field) {
+		if (obj[key] instanceof Bacon.Circuit.Field) {
 			flat[keyPath.join('.')] = obj[key];
 			continue;
 		}
@@ -144,35 +148,50 @@ function flattenArray(array) {
 }
 
 Bacon.Circuit = Circuit;
-
-}();
-;!function () { 'use strict';
-
 function Field(setup, Type) {
-	var bus = new Bacon.Bus();
 	
-	var observable = bus.toProperty();
-	if (Type === Bacon.EventStream) 
-		observable = observable.toEventStream();
+	var observable = Bacon.fromBinder(function (sink) {
+		function asyncSink(value) {
+			if (value instanceof Bacon.Event && value.isEnd()) return;
+			setTimeout(function () {
+				sink(value);
+			});
+		}
+		
+		this.start = function (context, name, circuit) {
+			var result = setup.call(context, asyncSink, this.observable(), name, circuit);
+			
+			if (result instanceof Bacon.Bus)
+				result = result.toProperty();
+			if (result instanceof Bacon.Property)
+				result = result.toEventStream();
+			if (result instanceof Bacon.EventStream)
+				result.subscribe(asyncSink);
+			
+			delete this.start;
+			return this;
+		};
+		
+		return function () {};
+		
+	}.bind(this));
+	
+	var doAction = function () {};
+	this.doAction = function (fn) {
+		doAction = fn;
+	};
+	
+	observable = observable.doAction(function () {
+		doAction.apply(this, arguments);
+	});
+	
+	if (Type !== Bacon.EventStream)
+		observable = observable.toProperty();
 	
 	this.observable = function () {
 		return observable;
 	};
-	
-	this.start = function (context, name, circuit) {
-		var result = setup.call(context, name, circuit);
-		
-		if (result instanceof Bacon.Bus)
-			result = result.toProperty();
-		if (result instanceof Bacon.Property)
-			result = result.toEventStream();
-		if (result instanceof Bacon.EventStream)
-			bus.plug(result.delay(0));
-		
-		delete this.start;
-		
-		return this;
-	};
+
 }
 
 Field.stream = function (setup) {
@@ -184,33 +203,31 @@ Field.property = function (setup) {
 };
 
 Field.stream.expose = Field.property.expose = function (setup) {
-	var field = this(function (name, circuit) {
-		var context = this;
-		circuit.set(name, field.observable());
-		return setup.apply(context, arguments);
+	return this(function (sink, me, name, circuit) {
+		circuit.set(name, me);
+		return setup.apply(this, arguments);
 	});
-	return field;
 };
 
-Field.stream.function = function (flatMapLatest) {
+Field.stream.method = function (flatMapLatest) {
 	flatMapLatest = flatMapLatest || function () {
 		return arguments;
 	};
-	return this(function (name, circuit) {
+	return this(function (sink, me, name, circuit) {
 		var context = this;
-		return Bacon.fromBinder(function (sink) {
+		return Bacon.fromBinder(function (latest) {
 			circuit.set(name, function () {
 				var stream = Bacon.once(arguments).flatMapLatest(function (args) {
 					return flatMapLatest.apply(context, args);
 				});
 				
 				if (!circuit.promiseConstructor) {
-					sink(new Bacon.Next(stream));
+					latest(new Bacon.Next(stream));
 					return;
 				}
 				
 				return new circuit.promiseConstructor(function (resolve, reject) {
-					sink(new Bacon.Next(stream.doAction(resolve).doError(reject)));
+					latest(new Bacon.Next(stream.doAction(resolve).doError(reject)));
 				});
 			});
 			return function () {};
@@ -221,25 +238,24 @@ Field.stream.function = function (flatMapLatest) {
 };
 
 Field.property.digest = function (setup) {
-	return this(function (name, circuit) {
-		var context = this;
-		return setup.apply(context, arguments).doAction(function (value) {
+	var field = this(function (sink, me, name, circuit) {
+		field.doAction(function (value) {
 			circuit.set(name, value);
 		});
+		return setup.apply(this, arguments);
 	});
+	return field;
 };
 
 Field.property.watch = function (merge) {
-	merge = merge || function () {
-		return Bacon.never();
-	};
-	return this.digest(function (name, circuit) {
-		var context = this;
+	return this.digest(function (sink, me, name, circuit) {
+		merge = merge && merge.call(this, sink, me, name, circuit);
+		merge = merge || Bacon.never();
 		return Bacon.mergeAll(
-			merge.call(context),
-			Bacon.fromBinder(function (sink) {
+			merge,
+			Bacon.fromBinder(function (watched) {
 				circuit.watch(name, function (value) {
-					sink(new Bacon.Next(value));
+					watched(new Bacon.Next(value));
 				});
 				return function () {};
 			})
@@ -247,11 +263,13 @@ Field.property.watch = function (merge) {
 	});
 };
 
-Bacon.Field = Field;
+Bacon.Circuit.Field = Field;
 
-}();
-if (typeof exports === 'object')
-	module.exports = Bacon;
+Bacon.EventStream.field = Field.stream;
+Bacon.Property.field = Field.property;
+
+return Bacon.Circuit;
+});
 ;!function (angular, Bacon) { 'use strict';
 
 /**
@@ -273,7 +291,7 @@ Exposes {@link https://baconjs.github.io/ Bacon.js} as a service.
 */
 constant('Bacon', Bacon);
 
-}(window.angular, window.Bacon);
+}(window.angular, typeof exports === 'object' ? require('baconjs') : window.Bacon);
 ;!function (angular) { 'use strict';
 
 angular.module('bang').
@@ -377,6 +395,11 @@ angular.module('demoModule', ['bang']).controller('demoCtrl', [
 '$scope', '$http', 'Bacon', 'bang',
 function ($scope, $http, Bacon, bang) {
 
+	$scope.toString = function () {
+		// Use this name in debug logs:
+		return "demoCtrl";
+	};
+
 	bang.component($scope, {
 
 		loggedInUser: bang.property.digest(function () {
@@ -385,7 +408,7 @@ function ($scope, $http, Bacon, bang) {
 
 		books: {
 		
-			search: bang.stream.function(function (query) {
+			search: bang.stream.method(function (query) {
 				return query;
 			}),
 
@@ -409,10 +432,6 @@ function ($scope, $http, Bacon, bang) {
 
 		}
 
-	// Note that splitting this object does not serve any real purpose in this
-	// particular example, other than demonstrating how object merging works.
-	}, {
-
 		'books.listed': bang.property.digest(function () {
 			return Bacon.combineWith(
 				function (books, rating) {
@@ -424,17 +443,42 @@ function ($scope, $http, Bacon, bang) {
 		}),
 		
 		deals: bang.property.digest(function () {
-			return Bacon.combineTemplate({
-				bookIds: this.books.listed.map(function (books) {
-					return books.map(function (book) {
-						return book.id;
-					});
-				}),
-				country: this.loggedInUser.map('.country'),
-				limit: 5
-			}).flatMapLatest(function (queryDeals) {
-				return Bacon.fromPromise( $http.get('/searchDeals', queryDeals) );
+			// This field could be implemented similar to the previous,
+			// combining listed books and user country, but we could also opt
+			// for a more traditional approach as follows. (But also notice how
+			// much more verbose it is.)
+
+			var bookIds;
+			this.books.listed.onValue(function (books) {
+				bookIds = books.map(function (book) {
+					return book.id;
+				});
+				update();
 			});
+
+			var country;
+			this.loggedInUser.onValue(function (user) {
+				country = user.country;
+				update();
+			});
+
+			var pending = 0;
+			function update() {
+				if (bookIds === undefined || country === undefined) return;
+
+				pending++;
+				$http.get('/searchDeals', {
+					bookIds: bookIds,
+					country: country,
+					limit: 5
+				}).then(function (deals) {
+					if (pending === 1) sink(deals);
+				}, function (err) {
+					sink(new Bacon.Error(err));
+				}).finally(function () {
+					pending--;
+				});
+			}
 		})
 
 	});
@@ -487,7 +531,8 @@ service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootS
 	Service.prototype.constructor = Service;
 	
 	Service.prototype.toString = function () {
-		return this.face.constructor.name;
+		return this.face.hasOwnProperty('toString') ?
+			this.face.toString() : this.face.constructor.name;
 	};
 	
 	// Circuit type used on scope instances.
@@ -499,15 +544,19 @@ service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootS
 	Scope.prototype.constructor = Scope;
 	
 	Scope.prototype.toString = function () {
-		return "Scope:" + this.face.$id;
+		return (this.face.hasOwnProperty('toString') ?
+			this.face.toString() : "Scope") + "(" + this.face.$id + ")";
 	};
 	Scope.prototype.get = function (key) {
 		return $parse(key)(this.face);
 	};
 	Scope.prototype.set = function (key, value) {
-		this.face.$evalAsync(function () {
-			$parse(key).assign(this.face, value);
-		}.bind(this));
+		// Let Angular know that the scope has (probably) been changed, without
+		// forcing an(other) digest loop right away. Assign the actual value
+		// *before* doing so because `set()` is expected to assign
+		// synchronously.
+		$parse(key).assign(this.face, value);
+		this.face.$evalAsync();
 		return this;
 	};
 	Scope.prototype.watch = function (key, cb) {
@@ -534,12 +583,17 @@ service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootS
 		if (event.isError())
 			eventTypeColor = "Crimson";
 
-		$log.debug(["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
+		var args = [
+			["%c\uD83D\uDCA5%s", "%c%s", "%c%s"].join(" "),
 			"color: Gray", this.toString(),
 			"color: " + eventTypeColor, key,
-			"color: Gray", observable instanceof Bacon.Property ? "=" : "\u2192",
-			event.isError() ? event.error : event.value()
-		);
+			"color: Gray", event.isEnd() ? "\u00D7" : observable instanceof Bacon.Property ? "=" : "\u2192"
+		];
+
+		if (!event.isEnd())
+			args.push(event.isError() ? event.error : event.value());
+
+		$log.debug.apply($log, args);
 	};
 	
 /**
@@ -597,11 +651,18 @@ Returns the constructed component.
 Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
 
-@param {function(name, component)} setup
+@param {function(sink, me, name, component)} setup
 Initialization function that defines stream dependencies and behavior. Should
 return an observable from which the eventual event stream will be instantiated.
-The values of `this`, `name` and `component` are determined upon activation
-(i.e. calling `field.start(context, name, component)`).
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events according to the this setup function's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
 
 If field is constructed and activated in the context of `bang.component()`,
 `this` will equal the collection of observables, and the `name` and `component`
@@ -624,11 +685,18 @@ Resulting observable will be exposed on the outward facing interface object
 (`face`) represented by the component and field name as supplied on stream
 activation.
 
-@param {function(name, component)} setup
+@param {function(sink, me, name, component)} setup
 Initialization function that defines stream dependencies and behavior. Should
 return an observable from which the eventual event stream will be instantiated.
-The values of `this`, `name` and `component` are determined upon activation
-(i.e. calling `field.start(context, name, component)`).
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events according to the this setup function's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
 
 If field is constructed and activated in the context of `bang.component()`,
 `this` will equal the collection of observables, and the `name` and `component`
@@ -641,7 +709,7 @@ Returns the constructed stream field.
 
 /**
 @ngdoc method
-@name module:bang.service:bang#stream.function
+@name module:bang.service:bang#stream.method
 @description
 
 Creates a stream field; an object from which an observable of type
@@ -660,7 +728,7 @@ full `arguments` object will make up the event value.
 @returns {Bacon.Field}
 Returns the constructed stream field.
 */
-	this.stream = Bacon.Field.stream;
+	this.stream = Bacon.Circuit.Field.stream;
 	
 /**
 @ngdoc method
@@ -670,11 +738,19 @@ Returns the constructed stream field.
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
 
-@param {function(name, component)} setup
+@param {function(sink, me, name, component)} setup
 Initialization function that defines property dependencies and behavior. Should
 return an observable from which the eventual property stream will be
-instantiated. The values of `this`, `name` and `component` are determined upon
-activation (i.e. calling `field.start(context, name, component)`).
+instantiated.
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events according to the this setup function's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
 
 If field is constructed and activated in the context of `bang.component()`,
 `this` will equal the collection of observables, and the `name` and `component`
@@ -697,11 +773,19 @@ Resulting observable will be exposed on the outward facing interface object
 (`face`) represented by the component and field name as supplied on property
 activation.
 
-@param {function(name, component)} setup
+@param {function(sink, me, name, component)} setup
 Initialization function that defines property dependencies and behavior. Should
 return an observable from which the eventual property stream will be
-instantiated. The values of `this`, `name` and `component` are determined upon
-activation (i.e. calling `field.start(context, name, component)`).
+instantiated.
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events according to the this setup function's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
 
 If field is constructed and activated in the context of `bang.component()`,
 `this` will equal the collection of observables, and the `name` and `component`
@@ -724,11 +808,19 @@ Every value of resulting observable will be assigned to outward facing interface
 object (`face`) represented by the component and field name as supplied on
 property activation.
 
-@param {function(name, component)} setup
+@param {function(sink, me, name, component)} setup
 Initialization function that defines property dependencies and behavior. Should
 return an observable from which the eventual property stream will be
-instantiated. The values of `this`, `name` and `component` are determined upon
-activation (i.e. calling `field.start(context, name, component)`).
+instantiated.
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events according to the this setup function's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
 
 If field is constructed and activated in the context of `bang.component()`,
 `this` will equal the collection of observables, and the `name` and `component`
@@ -753,14 +845,28 @@ property activation. Note that initial scope variable value (if any) is ignored
 by default, as to make room for initial values from other sources (provided via
 `merge`).
 
-@param {function()=} merge
+@param {function(sink, me, name, component)=} merge
 Should return an observable which will be merged into the event stream that
 watches the interface variable. Can be used to define an initial value.
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events resulting from this field's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
+
+If field is constructed and activated in the context of `bang.component()`,
+`this` will equal the collection of observables, and the `name` and `component`
+arguments will be the corresponding field name (flattened object key) and
+component (`Bacon.Circuit` instance) respectively.
 
 @returns {Bacon.Field}
 Returns the constructed property field.
 */
-	this.property = Bacon.Field.property;
+	this.property = Bacon.Circuit.Field.property;
 	
 }]);
 

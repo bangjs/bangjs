@@ -12,6 +12,11 @@ angular.module('demoModule', ['bang']).controller('demoCtrl', [
 '$scope', '$http', 'Bacon', 'bang',
 function ($scope, $http, Bacon, bang) {
 
+	$scope.toString = function () {
+		// Use this name in debug logs:
+		return "demoCtrl";
+	};
+
 	bang.component($scope, {
 
 		loggedInUser: bang.property.digest(function () {
@@ -20,7 +25,7 @@ function ($scope, $http, Bacon, bang) {
 
 		books: {
 		
-			search: bang.stream.function(function (query) {
+			search: bang.stream.method(function (query) {
 				return query;
 			}),
 
@@ -44,10 +49,6 @@ function ($scope, $http, Bacon, bang) {
 
 		}
 
-	// Note that splitting this object does not serve any real purpose in this
-	// particular example, other than demonstrating how object merging works.
-	}, {
-
 		'books.listed': bang.property.digest(function () {
 			return Bacon.combineWith(
 				function (books, rating) {
@@ -59,17 +60,42 @@ function ($scope, $http, Bacon, bang) {
 		}),
 		
 		deals: bang.property.digest(function () {
-			return Bacon.combineTemplate({
-				bookIds: this.books.listed.map(function (books) {
-					return books.map(function (book) {
-						return book.id;
-					});
-				}),
-				country: this.loggedInUser.map('.country'),
-				limit: 5
-			}).flatMapLatest(function (queryDeals) {
-				return Bacon.fromPromise( $http.get('/searchDeals', queryDeals) );
+			// This field could be implemented similar to the previous,
+			// combining listed books and user country, but we could also opt
+			// for a more traditional approach as follows. (But also notice how
+			// much more verbose it is.)
+
+			var bookIds;
+			this.books.listed.onValue(function (books) {
+				bookIds = books.map(function (book) {
+					return book.id;
+				});
+				update();
 			});
+
+			var country;
+			this.loggedInUser.onValue(function (user) {
+				country = user.country;
+				update();
+			});
+
+			var pending = 0;
+			function update() {
+				if (bookIds === undefined || country === undefined) return;
+
+				pending++;
+				$http.get('/searchDeals', {
+					bookIds: bookIds,
+					country: country,
+					limit: 5
+				}).then(function (deals) {
+					if (pending === 1) sink(deals);
+				}, function (err) {
+					sink(new Bacon.Error(err));
+				}).finally(function () {
+					pending--;
+				});
+			}
 		})
 
 	});
@@ -116,7 +142,7 @@ A corresponding view could look as follows:
 * [`component`](#componentface-fields)
 * [`stream`](#streamsetup)
 * [`stream.expose`](#streamexposesetup)
-* [`stream.function`](#streamfunctionflatmaplatest)
+* [`stream.method`](#streammethodflatmaplatest)
 * [`property`](#propertysetup)
 * [`property.expose`](#propertyexposesetup)
 * [`property.digest`](#propertydigestsetup)
@@ -125,7 +151,7 @@ A corresponding view could look as follows:
 
 ## component(face, fields)
 
-:octocat: [`src/bang.js#L187`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L187)
+:octocat: [`src/bang.js#L223`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L223)
 
 Creates an integrated collection of observables powering an outward facing
 application programming interface. Ready to power either controller view scope
@@ -165,17 +191,24 @@ Returns the constructed component.
 
 ## stream(setup)
 
-:octocat: [`src/bang.js#L234`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L234)
+:octocat: [`src/bang.js#L270`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L270)
 
 Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
 
-:baby_bottle:  **setup** _function(name, component)_
+:baby_bottle:  **setup** _function(sink, me, name, component)_
 
 Initialization function that defines stream dependencies and behavior. Should
 return an observable from which the eventual event stream will be instantiated.
-The values of `this`, `name` and `component` are determined upon activation
-(i.e. calling `field.start(context, name, component)`).
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events according to the this setup function's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
 
 If field is constructed and activated in the context of `bang.component()`,
 `this` will equal the collection of observables, and the `name` and `component`
@@ -188,7 +221,7 @@ Returns the constructed stream field.
 
 ## stream.expose(setup)
 
-:octocat: [`src/bang.js#L257`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L257)
+:octocat: [`src/bang.js#L300`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L300)
 
 Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -197,12 +230,19 @@ Resulting observable will be exposed on the outward facing interface object
 (`face`) represented by the component and field name as supplied on stream
 activation.
 
-:baby_bottle:  **setup** _function(name, component)_
+:baby_bottle:  **setup** _function(sink, me, name, component)_
 
 Initialization function that defines stream dependencies and behavior. Should
 return an observable from which the eventual event stream will be instantiated.
-The values of `this`, `name` and `component` are determined upon activation
-(i.e. calling `field.start(context, name, component)`).
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events according to the this setup function's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
 
 If field is constructed and activated in the context of `bang.component()`,
 `this` will equal the collection of observables, and the `name` and `component`
@@ -213,9 +253,9 @@ component (`Bacon.Circuit` instance) respectively.
 
 Returns the constructed stream field.
 
-## stream.function([flatMapLatest])
+## stream.method([flatMapLatest])
 
-:octocat: [`src/bang.js#L284`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L284)
+:octocat: [`src/bang.js#L334`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L334)
 
 Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -237,17 +277,25 @@ Returns the constructed stream field.
 
 ## property(setup)
 
-:octocat: [`src/bang.js#L307`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L307)
+:octocat: [`src/bang.js#L357`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L357)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
 
-:baby_bottle:  **setup** _function(name, component)_
+:baby_bottle:  **setup** _function(sink, me, name, component)_
 
 Initialization function that defines property dependencies and behavior. Should
 return an observable from which the eventual property stream will be
-instantiated. The values of `this`, `name` and `component` are determined upon
-activation (i.e. calling `field.start(context, name, component)`).
+instantiated.
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events according to the this setup function's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
 
 If field is constructed and activated in the context of `bang.component()`,
 `this` will equal the collection of observables, and the `name` and `component`
@@ -260,7 +308,7 @@ Returns the constructed property field.
 
 ## property.expose(setup)
 
-:octocat: [`src/bang.js#L330`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L330)
+:octocat: [`src/bang.js#L388`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L388)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -269,12 +317,20 @@ Resulting observable will be exposed on the outward facing interface object
 (`face`) represented by the component and field name as supplied on property
 activation.
 
-:baby_bottle:  **setup** _function(name, component)_
+:baby_bottle:  **setup** _function(sink, me, name, component)_
 
 Initialization function that defines property dependencies and behavior. Should
 return an observable from which the eventual property stream will be
-instantiated. The values of `this`, `name` and `component` are determined upon
-activation (i.e. calling `field.start(context, name, component)`).
+instantiated.
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events according to the this setup function's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
 
 If field is constructed and activated in the context of `bang.component()`,
 `this` will equal the collection of observables, and the `name` and `component`
@@ -287,7 +343,7 @@ Returns the constructed property field.
 
 ## property.digest(setup)
 
-:octocat: [`src/bang.js#L357`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L357)
+:octocat: [`src/bang.js#L423`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L423)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -296,12 +352,20 @@ Every value of resulting observable will be assigned to outward facing interface
 object (`face`) represented by the component and field name as supplied on
 property activation.
 
-:baby_bottle:  **setup** _function(name, component)_
+:baby_bottle:  **setup** _function(sink, me, name, component)_
 
 Initialization function that defines property dependencies and behavior. Should
 return an observable from which the eventual property stream will be
-instantiated. The values of `this`, `name` and `component` are determined upon
-activation (i.e. calling `field.start(context, name, component)`).
+instantiated.
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events according to the this setup function's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
 
 If field is constructed and activated in the context of `bang.component()`,
 `this` will equal the collection of observables, and the `name` and `component`
@@ -314,7 +378,7 @@ Returns the constructed property field.
 
 ## property.watch([merge])
 
-:octocat: [`src/bang.js#L384`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L384)
+:octocat: [`src/bang.js#L458`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L458)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -325,10 +389,24 @@ property activation. Note that initial scope variable value (if any) is ignored
 by default, as to make room for initial values from other sources (provided via
 `merge`).
 
-:baby_bottle: optional **merge** _function()_
+:baby_bottle: optional **merge** _function(sink, me, name, component)_
 
 Should return an observable which will be merged into the event stream that
 watches the interface variable. Can be used to define an initial value.
+
+The function `sink` provided as first argument can be used to push events to the
+resulting observable (similar to the first argument of the callback function
+passed to `Bacon.fromBinder`). The second argument `me` refers to the observable
+instance that will dispatch the events resulting from this field's
+implementation. Having this available inside its own factory method makes it
+easy to assign side-effects to its own stream of events. The values of `this`,
+`name` and `component` are determined upon activation (i.e. calling
+`field.start(context, name, component)`).
+
+If field is constructed and activated in the context of `bang.component()`,
+`this` will equal the collection of observables, and the `name` and `component`
+arguments will be the corresponding field name (flattened object key) and
+component (`Bacon.Circuit` instance) respectively.
 
 :dash: _Bacon.Field_
 

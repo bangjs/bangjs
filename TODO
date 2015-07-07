@@ -1,8 +1,0 @@
-X write tests that verify promiseConstructor with various versions of AngularJS
-X update docs of bang.location to reflect $location is no longer supplied as context
-- update todomvc-bangjs to work with BangJS 0.2.x
-- write introduction/how-to-use article
-X no separate log color for initial events
-X better log representation for non-scope components
-- adjust website to latest version
-/ register at bower

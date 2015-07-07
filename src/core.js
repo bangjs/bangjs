@@ -19,4 +19,4 @@ Exposes {@link https://baconjs.github.io/ Bacon.js} as a service.
 */
 constant('Bacon', Bacon);
 
-}(window.angular, window.Bacon);
+}(window.angular, typeof exports === 'object' ? require('baconjs') : window.Bacon);

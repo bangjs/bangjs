@@ -2,6 +2,7 @@
   "name": "bangjs",
   "version": "0.2.0",
   "description": "Bacon-flavored Angular",
+  "main": "dist/bang.js",
   "scripts": {
     "test": "npm run test-angular1_4",
     "test-angular1_4": "./node_modules/karma/bin/karma start test/karma/angular1_4.conf.js",
@@ -28,7 +29,7 @@
   },
   "homepage": "http://bangjs.org",
   "devDependencies": {
-    "bacon.circuit": "^0.1.3",
+    "bacon.circuit": "^0.2.0",
     "baconjs": "~0.7.64",
     "dgeni": "^0.4.1",
     "dgeni-packages": "^0.10.13",

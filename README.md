@@ -1,5 +1,5 @@
 # BangJS
-Bacon-flavored Angular :boom:
+Reactive Angular :boom:
 
 
 ## Overview
@@ -32,9 +32,9 @@ Concise and compliant implementation of the [TodoMVC](http://todomvc.com/) bench
 
 ## About
 
-BangJS was created by [Tim Molendijk](https://twitter.com/timmolendijk) using [Bacon.Circuit](https://github.com/bangjs/bacon.circuit/). It is currently in production use at [Nouncy](http://nouncy.com/).
+BangJS was created by [Tim Molendijk](https://twitter.com/timmolendijk), uses [Bacon.Circuit](https://github.com/bangjs/bacon.circuit/) internally and is currently in production use at [Nouncy](http://nouncy.com/).
 
-Contributions are welcomed. Feel free to [email me](https://github.com/bangjs/bangjs/blob/master/package.json#L24) or send in an issue or pull request.
+Contributions are welcomed. Feel free to [email me](https://github.com/bangjs/bangjs/blob/master/package.json#L25) or send in an issue or pull request.
 
 * [Home page](http://bangjs.org/)
 * [Release history](https://github.com/bangjs/bangjs/blob/master/CHANGES.md)
