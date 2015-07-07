@@ -1,3 +1,14 @@
+### 0.2.1 :sparkles:
+_Sunday 7 June 2015_
+
+* Add verified support for AngularJS v1.3 and v1.4.
+* Enable test suite to run against multiple versions of AngularJS.
+* Move test and doc configurations to their own directories.
+* Update documentation of `bang.location` to reflect a change from v0.2.
+* Logger ignores the `Bacon.Initial` event type because of [its dubious semantics](https://github.com/baconjs/bacon.js/issues/598).
+* Better string representation of various types of interface objects; improves logger expressiveness.
+
+
 ### 0.2.0 :dizzy:
 _Tuesday 2 June 2015_
 
