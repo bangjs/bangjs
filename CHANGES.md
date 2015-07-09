@@ -1,3 +1,9 @@
+### 0.3.1 :sparkles:
+_Thursday 9 July 2015_
+
+* Update to use Bacon.Circuit v0.2.1 (bugfix release).
+
+
 ### 0.3.0 :dizzy:
 _Tuesday 7 July 2015_
 
