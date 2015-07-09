@@ -171,9 +171,11 @@ service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootS
 		return (this.face.hasOwnProperty('toString') ?
 			this.face.toString() : "Scope") + "(" + this.face.$id + ")";
 	};
+	// TODO: Remove this, as not used and not part of Bacon.Circuit interface.
 	Scope.prototype.get = function (key) {
 		return $parse(key)(this.face);
 	};
+	// TODO: Do not set value if new value equals current value (as in `watch`).
 	Scope.prototype.set = function (key, value) {
 		// Let Angular know that the scope has (probably) been changed, without
 		// forcing an(other) digest loop right away. Assign the actual value
