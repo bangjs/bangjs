@@ -5,9 +5,9 @@
   "main": "dist/bang.js",
   "scripts": {
     "test": "npm run test-angular1_4",
-    "test-angular1_4": "./node_modules/karma/bin/karma start test/karma/angular1_4.conf.js",
-    "test-angular1_3": "./node_modules/karma/bin/karma start test/karma/angular1_3.conf.js",
-    "test-angular1_2": "./node_modules/karma/bin/karma start test/karma/angular1_2.conf.js",
+    "test-angular1_4": "karma start test/karma/angular1_4.conf.js",
+    "test-angular1_3": "karma start test/karma/angular1_3.conf.js",
+    "test-angular1_2": "karma start test/karma/angular1_2.conf.js",
     "build": "gulp"
   },
   "repository": {
@@ -29,7 +29,7 @@
   },
   "homepage": "http://bangjs.org",
   "devDependencies": {
-    "bacon.circuit": "^0.2.1",
+    "bacon.circuit": "^0.2.2",
     "baconjs": "~0.7.64",
     "dgeni": "^0.4.1",
     "dgeni-packages": "^0.10.13",

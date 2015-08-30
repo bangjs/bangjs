@@ -148,25 +148,33 @@ function flattenArray(array) {
 }
 
 Bacon.Circuit = Circuit;
-function Field(setup, Type) {
-	
-	var observable = Bacon.fromBinder(function (sink) {
-		function asyncSink(value) {
-			if (value instanceof Bacon.Event && value.isEnd()) return;
+function wrapSink(sink, ignoreEnd, emitAsync) {
+	return function (value) {
+		if (ignoreEnd && value instanceof Bacon.Event && value.isEnd())
+			return;
+		if (emitAsync)
 			setTimeout(function () {
 				sink(value);
 			});
-		}
+		else
+			sink(value);
+	};
+}
+
+function Field(setup, Type) {
+	
+	var observable = Bacon.fromBinder(function (sink) {
+		sink = wrapSink(sink, true, true);
 		
 		this.start = function (context, name, circuit) {
-			var result = setup.call(context, asyncSink, this.observable(), name, circuit);
+			var result = setup.call(context, sink, this.observable(), name, circuit);
 			
 			if (result instanceof Bacon.Bus)
 				result = result.toProperty();
 			if (result instanceof Bacon.Property)
 				result = result.toEventStream();
 			if (result instanceof Bacon.EventStream)
-				result.subscribe(asyncSink);
+				result.subscribe(sink);
 			
 			delete this.start;
 			return this;
@@ -249,17 +257,16 @@ Field.property.digest = function (setup) {
 
 Field.property.watch = function (merge) {
 	return this(function (sink, me, name, circuit) {
-		merge = merge && merge.call(this, sink, me, name, circuit);
-		merge = merge || Bacon.never();
-		return Bacon.mergeAll(
-			merge,
-			Bacon.fromBinder(function (watched) {
-				circuit.watch(name, function (value) {
-					watched(new Bacon.Next(value));
-				});
-				return function () {};
-			})
-		).skipDuplicates().doAction(function (value) {
+		return Bacon.fromBinder(function (send) {
+			send = wrapSink(send, true);
+			if (merge) {
+				merge = merge(send, me, name, circuit);
+				if (merge instanceof Bacon.Observable)
+					merge.subscribe(send);
+			}
+			circuit.watch(name, send);
+			return function () {};
+		}.bind(this)).skipDuplicates().doAction(function (value) {
 			circuit.set(name, value);
 		});
 	});
@@ -847,7 +854,8 @@ Events of this property reflect changes of value on the outward facing interface
 object (`face`) represented by the component and field name as supplied on
 property activation. Note that initial scope variable value (if any) is ignored
 by default, as to make room for initial values from other sources (provided via
-`merge`).
+`merge`). Also note that the fact that this property represents a user interface
+value means that it will never emit equal values consecutively.
 
 @param {function(sink, me, name, component)=} merge
 Should return an observable which will be merged into the event stream that

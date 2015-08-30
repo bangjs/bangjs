@@ -387,7 +387,8 @@ Events of this property reflect changes of value on the outward facing interface
 object (`face`) represented by the component and field name as supplied on
 property activation. Note that initial scope variable value (if any) is ignored
 by default, as to make room for initial values from other sources (provided via
-`merge`).
+`merge`). Also note that the fact that this property represents a user interface
+value means that it will never emit equal values consecutively.
 
 :baby_bottle: optional **merge** _function(sink, me, name, component)_
 
