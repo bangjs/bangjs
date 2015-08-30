@@ -1,3 +1,11 @@
+### 0.3.2 :sparkles:
+_Sunday 30 August 2015_
+
+* Update to use Bacon.Circuit v0.2.2 (bugfix release).
+* Minor tweak in NPM package configuration.
+* Tiny docs improvement.
+
+
 ### 0.3.1 :sparkles:
 _Thursday 9 July 2015_
 
