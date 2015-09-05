@@ -260,7 +260,7 @@ Field.property.watch = function (merge) {
 		return Bacon.fromBinder(function (send) {
 			send = wrapSink(send, true);
 			if (merge) {
-				merge = merge(send, me, name, circuit);
+				merge = merge.call(this, send, me, name, circuit);
 				if (merge instanceof Bacon.Observable)
 					merge.subscribe(send);
 			}
