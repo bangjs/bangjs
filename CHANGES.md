@@ -1,3 +1,15 @@
+### 0.4.0 :dizzy:
+_Monday 5 October 2015_
+
+* Expose Service and Scope circuit types.
+* Component returns circuit context instead of circuit instance.
+* Component takes optional name.
+* `Scope.prototype.set` doesn't do anything if value not changed.
+* Ditch `Scope.prototype.get` because not used.
+* Update to use Bacon.Circuit v0.2.4.
+* Expand tests and update docs.
+
+
 ### 0.3.3 :sparkles:
 _Sunday 6 September 2015_
 
