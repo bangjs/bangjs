@@ -139,7 +139,7 @@ A corresponding view could look as follows:
 
 ### Index
 
-* [`component`](#componentface-fields)
+* [`component`](#componentname-face-fields)
 * [`stream`](#streamsetup)
 * [`stream.expose`](#streamexposesetup)
 * [`stream.method`](#streammethodflatmaplatest)
@@ -149,9 +149,9 @@ A corresponding view could look as follows:
 * [`property.watch`](#propertywatchmerge)
 
 
-## component(face, fields)
+## component([name], face, fields)
 
-:octocat: [`src/bang.js#L225`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L225)
+:octocat: [`src/bang.js#L234`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L234)
 
 Creates an integrated collection of observables powering an outward facing
 application programming interface. Ready to power either controller view scope
@@ -172,6 +172,10 @@ and rapid debugging during development. Note that currently this feature looks
 best in Google Chrome and Safari. Messages are outputted via `$log.debug()`,
 which means they can be disabled using the `$logProvider.debugEnabled()` flag.
 
+:baby_bottle: optional **name** _string_
+
+Name for this component to be used by debug logger.
+
 :baby_bottle:  **face** _Object|$rootScope.Scope_
 
 Object onto which public interface of component should be constructed, which can
@@ -185,13 +189,14 @@ be nested.
 Multiple `fields` objects can be specified, all of which will be flattened and
 then merged into a single one-dimensional map of key–value pairs.
 
-:dash: _Bacon.Circuit_
+:dash: _Object.&lt;string, Bacon.Observable&gt;_
 
-Returns the constructed component.
+Returns the constructed object with streams and properties, indexed by their
+names. Object may be nested.
 
 ## stream(setup)
 
-:octocat: [`src/bang.js#L272`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L272)
+:octocat: [`src/bang.js#L292`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L292)
 
 Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -221,7 +226,7 @@ Returns the constructed stream field.
 
 ## stream.expose(setup)
 
-:octocat: [`src/bang.js#L302`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L302)
+:octocat: [`src/bang.js#L322`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L322)
 
 Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -255,7 +260,7 @@ Returns the constructed stream field.
 
 ## stream.method([flatMapLatest])
 
-:octocat: [`src/bang.js#L336`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L336)
+:octocat: [`src/bang.js#L356`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L356)
 
 Creates a stream field; an object from which an observable of type
 `Bacon.EventStream` can be instantiated and initialized.
@@ -277,7 +282,7 @@ Returns the constructed stream field.
 
 ## property(setup)
 
-:octocat: [`src/bang.js#L359`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L359)
+:octocat: [`src/bang.js#L379`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L379)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -308,7 +313,7 @@ Returns the constructed property field.
 
 ## property.expose(setup)
 
-:octocat: [`src/bang.js#L390`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L390)
+:octocat: [`src/bang.js#L410`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L410)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -343,7 +348,7 @@ Returns the constructed property field.
 
 ## property.digest(setup)
 
-:octocat: [`src/bang.js#L425`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L425)
+:octocat: [`src/bang.js#L445`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L445)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.
@@ -378,7 +383,7 @@ Returns the constructed property field.
 
 ## property.watch([merge])
 
-:octocat: [`src/bang.js#L460`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L460)
+:octocat: [`src/bang.js#L480`](https://github.com/bangjs/bangjs/tree/master/src/bang.js#L480)
 
 Creates a property field; an object from which an observable of type
 `Bacon.Property` can be instantiated and initialized.

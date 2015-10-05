@@ -29,7 +29,7 @@
   },
   "homepage": "http://bangjs.org",
   "devDependencies": {
-    "bacon.circuit": "~0.2.3",
+    "bacon.circuit": "~0.2.4",
     "baconjs": "~0.7.64",
     "dgeni": "^0.4.1",
     "dgeni-packages": "^0.10.13",

@@ -29,12 +29,12 @@ function Circuit(face) {
 	
 	var keys = Object.keys(fields);
 
-	var context = {};
+	circuit.context = {};
 	
 	keys.forEach(function (key) {
 		// TODO: Making this an actual getter-setter is a bit pointless for
 		// this scenario, but ah well doesn't really hurt either.
-		setObjectProp(context, key, fields[key].observable());
+		setObjectProp(circuit.context, key, fields[key].observable());
 	});
 	
 	keys.forEach(function (key) {
@@ -44,7 +44,7 @@ function Circuit(face) {
 	});
 
 	keys.forEach(function (key) {
-		fields[key].start(context, key, circuit);
+		fields[key].start(circuit.context, key, circuit);
 	});
 }
 
@@ -99,7 +99,7 @@ function setObjectProp(obj, path, value) {
 		
 		Object.defineProperty(leaf.object, leaf.key, {
 			configurable: true,
-			enumberable: true,
+			enumerable: true,
 			get: function () {
 				return value;
 			},
@@ -533,55 +533,64 @@ service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootS
 	
 	// Circuit type used on service singletons.
 	
-	function Service() {
-		Bacon.Circuit.apply(this, arguments);
+	function Service(name, face, fields) {
+		this.toString = function () {
+			return name || (this.face.hasOwnProperty('toString') ?
+				this.face.toString() : this.face.constructor.name);
+		};
+
+		Bacon.Circuit.call(this, face, fields);
 	}
 	Service.prototype = new Bacon.Circuit();
 	Service.prototype.constructor = Service;
 	
-	Service.prototype.toString = function () {
-		return this.face.hasOwnProperty('toString') ?
-			this.face.toString() : this.face.constructor.name;
-	};
+	this.Service = Service;
 	
 	// Circuit type used on scope instances.
 	
-	function Scope() {
-		Bacon.Circuit.apply(this, arguments);
+	function Scope(name, face, fields) {
+		this.toString = function () {
+			name = name || (this.face.hasOwnProperty('toString') ?
+				this.face.toString() : "Scope");
+			return name + "(" + this.face.$id + ")";
+		};
+
+		Bacon.Circuit.call(this, face, fields);
 	}
 	Scope.prototype = new Bacon.Circuit();
 	Scope.prototype.constructor = Scope;
 	
-	Scope.prototype.toString = function () {
-		return (this.face.hasOwnProperty('toString') ?
-			this.face.toString() : "Scope") + "(" + this.face.$id + ")";
-	};
-	// TODO: Remove this, as not used and not part of Bacon.Circuit interface.
-	Scope.prototype.get = function (key) {
-		return $parse(key)(this.face);
-	};
-	// TODO: Do not set value if new value equals current value (as in `watch`).
 	Scope.prototype.set = function (key, value) {
-		// Let Angular know that the scope has (probably) been changed, without
-		// forcing an(other) digest loop right away. Assign the actual value
-		// *before* doing so because `set()` is expected to assign
-		// synchronously.
-		$parse(key).assign(this.face, value);
-		this.face.$evalAsync();
+		var parsed = $parse(key);
+		if (parsed(this.face) !== value) {
+			// Let Angular know that the scope has (probably) been changed,
+			// without forcing a(nother) digest loop right away. Assign the
+			// actual value *before* doing so because `set()` is expected to
+			// assign synchronously.
+			parsed.assign(this.face, value);
+			// `$evalAsync()` will asynchronously queue a digest loop if none is
+			// pending, it won't complain if it is called without an expression
+			// and it is supported by all AngularJS versions that we cover.
+			this.face.$evalAsync();
+		}
 		return this;
 	};
+	
 	Scope.prototype.watch = function (key, cb) {
 		this.face.$watch(key, function (to, from) {
 			if (to !== from) cb(to);
 		});
 		return this;
 	};
+
+	this.Scope = Scope;
 	
 	// General component behavior.
 	
 	var promiseConstructor = $q;
 	if (!angular.isFunction(promiseConstructor))
-		// Imitate ES6 `Promise` and `Q.Promise` constructor interface for Angular 1.2.
+		// Imitate ES6 `Promise` and `Q.Promise` constructor interface for
+		// Angular 1.2.
 		promiseConstructor = function (resolver) {
 			var deferred = $q.defer();
 			resolver(deferred.resolve, deferred.reject);
@@ -631,6 +640,9 @@ and rapid debugging during development. Note that currently this feature looks
 best in Google Chrome and Safari. Messages are outputted via `$log.debug()`,
 which means they can be disabled using the `$logProvider.debugEnabled()` flag.
 
+@param {string=} name
+Name for this component to be used by debug logger.
+
 @param {Object|$rootScope.Scope} face
 Object onto which public interface of component should be constructed, which can
 be a scope in case of a controller component.
@@ -642,16 +654,24 @@ be nested.
 Multiple `fields` objects can be specified, all of which will be flattened and
 then merged into a single one-dimensional map of key–value pairs.
 
-@returns {Bacon.Circuit}
-Returns the constructed component.
+@returns {Object.<string, Bacon.Observable>}
+Returns the constructed object with streams and properties, indexed by their
+names. Object may be nested.
 */
-	this.component = function (face) {
-		var fields = [].slice.call(arguments, 1);
+	this.component = function (name, face) {
+		var fields;
+		if (typeof name === 'string') {
+			fields = [].slice.call(arguments, 2);
+		} else {
+			fields = [].slice.call(arguments, 1);
+			face = name;
+			name = undefined;
+		}
 		
 		if (face instanceof $rootScope.constructor)
-			return new Scope(face, fields);
+			return new Scope(name, face, fields).context;
 		
-		return new Service(face, fields);
+		return new Service(name, face, fields).context;
 	};
 	
 /**
