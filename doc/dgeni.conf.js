@@ -62,7 +62,7 @@ config(function (computePathsProcessor) {
 	}, {
 		docTypes: ['componentGroup'],
 		// TODO: Is this really the recommended approach to prevent this
-		// document to end up in its own rendered page?
+		// document from ending up in its own rendered page?
 		pathTemplate: '.',
 		outputPathTemplate: '/dev/null'
 	}];
