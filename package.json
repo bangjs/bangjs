@@ -1,6 +1,6 @@
 {
   "name": "bangjs",
-  "version": "0.3.3",
+  "version": "0.4.0",
   "description": "Reactive Angular",
   "main": "dist/bang.js",
   "scripts": {
