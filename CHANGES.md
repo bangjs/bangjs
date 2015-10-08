@@ -1,3 +1,9 @@
+### 0.4.1 :sparkles:
+_Friday 9 October 2015_
+
+* `Scope.prototype.watch` no longer ignore initial values of properties that actually exist on the scope.
+
+
 ### 0.4.0 :dizzy:
 _Monday 5 October 2015_
 
