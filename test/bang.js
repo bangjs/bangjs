@@ -78,7 +78,7 @@ describe("bang", function () {
 
 		});
 
-		it("triggers digest cycle on scope (asynchronously)", function () {
+		it("triggers digest cycle on scope (asynchronously)", function (done) {
 
 			var scope = $rootScope.$new();
 
@@ -86,6 +86,8 @@ describe("bang", function () {
 
 			scope.$watch('key', function (value) {
 				expect(value).to.equal('value');
+
+				done();
 			});
 
 			circuit.set('key', 'value');
@@ -95,6 +97,50 @@ describe("bang", function () {
 			// `$browser.defer` internally and `ngMock` overwrites its regular
 			// implementation and provides a flush method.
 			$browser.defer.flush();
+
+		});
+
+	});
+
+	describe("watch", function () {
+
+		it("reports value changes on scope", function (done) {
+
+			var scope = $rootScope.$new();
+
+			var circuit = new bang.Scope(undefined, scope, {});
+
+			circuit.watch('key', function (value) {
+				expect(value).to.equal('value');
+
+				done();
+			});
+			// More AngularJS black magic to account for here. Scope watches are
+			// initialized upon first digest loop, so if we set scope properties
+			// before that moment their change won't be noticed.
+			scope.$digest();
+
+			scope.key = 'value';
+			scope.$digest();
+
+		});
+
+		it("reports initial values on scope", function () {
+
+			var scope = $rootScope.$new();
+			scope.key = 1;
+
+			var circuit = new bang.Scope(undefined, scope, {});
+
+			var onWatch = sinon.spy();
+			circuit.watch('key', onWatch);
+			scope.$digest();
+
+			scope.key = 2;
+			scope.$digest();
+
+			expect(onWatch.firstCall).to.have.been.calledWithExactly(1);
+			expect(onWatch.secondCall).to.have.been.calledWithExactly(2);
 
 		});
 
