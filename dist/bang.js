@@ -562,24 +562,27 @@ service('bang', ['$rootScope', '$parse', '$q', '$log', 'Bacon', function ($rootS
 	
 	Scope.prototype.set = function (key, value) {
 		var parsed = $parse(key);
-		if (parsed(this.face) !== value) {
-			// Let Angular know that the scope has (probably) been changed,
-			// without forcing a(nother) digest loop right away. Assign the
-			// actual value *before* doing so because `set()` is expected to
-			// assign synchronously.
-			parsed.assign(this.face, value);
-			// `$evalAsync()` will asynchronously queue a digest loop if none is
-			// pending, it won't complain if it is called without an expression
-			// and it is supported by all AngularJS versions that we cover.
-			this.face.$evalAsync();
-		}
+
+		// Do not check whether new value has changed from current value,
+		// because the values could be equal (object references) yet in a
+		// different state and thus different from the perspective of a scope
+		// watch expression.
+
+		// Let Angular know that the scope has (probably) been changed, without
+		// forcing a(nother) digest loop right away. Assign the actual value
+		// *before* doing so because `set()` is expected to assign
+		// synchronously.
+		parsed.assign(this.face, value);
+
+		// `$evalAsync()` will asynchronously queue a digest loop if none is
+		// pending, it won't complain if it is called without an expression and
+		// it is supported by all AngularJS versions that we cover.
+		this.face.$evalAsync();
+
 		return this;
 	};
 	
 	Scope.prototype.watch = function (key, cb) {
-		if (key in this.face)
-			cb(this.face[key]);
-
 		this.face.$watch(key, function (to, from) {
 			if (to !== from)
 				cb(to);
@@ -877,8 +880,10 @@ Creates a property field; an object from which an observable of type
 
 Events of this property reflect changes of value on the outward facing interface
 object (`face`) represented by the component and field name as supplied on
-property activation. Note that the fact that this property represents a user
-interface value means that it will never emit equal values consecutively.
+property activation. Note that initial scope variable value (if any) is ignored
+by default, as to make room for initial values from other sources (provided via
+`merge`). Also note that the fact that this property represents a user interface
+value means that it will never emit equal values consecutively.
 
 @param {function(sink, me, name, component)=} merge
 Should return an observable which will be merged into the event stream that

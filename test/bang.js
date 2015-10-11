@@ -100,6 +100,25 @@ describe("bang", function () {
 
 		});
 
+		it("assigns and digests even when value equals current value", function () {
+
+			var scope = $rootScope.$new();
+			scope.obj = { key: 1 };
+
+			var onWatch = sinon.spy();
+			scope.$watch('obj.key', onWatch);
+			scope.$digest();
+
+			var circuit = new bang.Scope(undefined, scope, {});
+
+			scope.obj.key = 2;
+			circuit.set('key', scope.obj);
+			$browser.defer.flush();
+
+			expect(onWatch).to.have.been.calledTwice;
+
+		});
+
 	});
 
 	describe("watch", function () {
@@ -125,22 +144,22 @@ describe("bang", function () {
 
 		});
 
-		it("reports initial values on scope", function () {
+		it("ignores initial values on scope", function (done) {
 
 			var scope = $rootScope.$new();
 			scope.key = 1;
 
 			var circuit = new bang.Scope(undefined, scope, {});
 
-			var onWatch = sinon.spy();
-			circuit.watch('key', onWatch);
+			circuit.watch('key', function (value) {
+				expect(value).to.equal(2);
+
+				done();
+			});
 			scope.$digest();
 
 			scope.key = 2;
 			scope.$digest();
-
-			expect(onWatch.firstCall).to.have.been.calledWithExactly(1);
-			expect(onWatch.secondCall).to.have.been.calledWithExactly(2);
 
 		});
 
