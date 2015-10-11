@@ -1,7 +1,14 @@
+### 0.4.2 :sparkles:
+_Sunday 11 October 2015_
+
+* `Scope.prototype.set` always (re)assigns to scope and digests, regardless of current value. Assigned value may be reference to the same object (hence equality) but in a different state, which means a scope digest is required to trigger watches that reference object properties.
+* `Scope.prototype.watch` ignores initial values of scope properties again. Better to keep behavior consistent with `Service.prototype.watch` and Bacon.Circuit until we are certain we want this change across the board.
+
+
 ### 0.4.1 :sparkles:
 _Friday 9 October 2015_
 
-* `Scope.prototype.watch` no longer ignore initial values of properties that actually exist on the scope.
+* `Scope.prototype.watch` no longer ignores initial values of properties that actually exist on the scope.
 
 
 ### 0.4.0 :dizzy:
